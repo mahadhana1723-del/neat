@@ -3,9 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>🏸 Player Attendance</title>
+    <title>🏸 Player Attendance + Fees</title>
 
-    <!-- NEUMORPHIC STYLE + adjusted controls -->
+    <!-- STYLES (kept your original design, added small fee classes) -->
     <style>
       :root {
         --bg: #eef3fb;
@@ -24,7 +24,6 @@
         --control-radius: 10px;
       }
 
-      /* Base */
       * {
         box-sizing: border-box;
       }
@@ -40,7 +39,6 @@
         padding: 16px;
       }
 
-      /* Header (neumorphic) */
       header {
         position: sticky;
         top: 8px;
@@ -61,15 +59,13 @@
         font-size: 18px;
         color: var(--accent);
         font-weight: 700;
-        letter-spacing: 0.2px;
       }
 
-      /* Controls */
       .controls {
         display: flex;
         gap: 8px;
-        flex-wrap: wrap;
         align-items: center;
+        flex-wrap: wrap;
       }
       input,
       textarea,
@@ -122,13 +118,6 @@
         box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.7);
       }
 
-      button:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-        transform: none;
-      }
-
-      /* Layout */
       main {
         display: grid;
         grid-template-columns: 1fr 420px;
@@ -136,7 +125,6 @@
         margin-top: 14px;
       }
 
-      /* Panels (neumorphic cards) */
       section,
       aside {
         border-radius: var(--radius);
@@ -146,13 +134,7 @@
           inset 2px 2px 8px rgba(255, 255, 255, 0.85);
         border: 1px solid var(--border);
       }
-      h2 {
-        margin: 0 0 8px;
-        font-size: 16px;
-        color: var(--accent);
-      }
 
-      /* toolbar & pills */
       .toolbar {
         display: flex;
         gap: 8px;
@@ -165,11 +147,8 @@
         border-radius: 999px;
         background: linear-gradient(145deg, #f7fbff, #f0f7ff);
         color: var(--muted);
-        box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.9),
-          6px 6px 14px rgba(13, 38, 66, 0.03);
       }
 
-      /* Today list rows - soft card style */
       .today-row {
         display: grid;
         grid-template-columns: 1fr auto auto auto auto;
@@ -185,8 +164,6 @@
       .today-row + .today-row {
         margin-top: 10px;
       }
-
-      /* status dot and badge */
       .status-dot {
         width: 12px;
         height: 12px;
@@ -210,7 +187,6 @@
         color: var(--muted);
       }
 
-      /* monthly table */
       .table-wrap {
         border-radius: 12px;
         overflow: auto;
@@ -241,12 +217,11 @@
       }
       tbody th {
         text-align: left;
-        background: transparent;
         position: sticky;
         left: 0;
+        background: transparent;
       }
 
-      /* side cards */
       .card {
         padding: 12px;
         border-radius: 12px;
@@ -278,47 +253,28 @@
         font-weight: 700;
       }
 
-      /* responsive */
-      @media (max-width: 600px) {
-        header {
-          padding: 10px;
-          border-radius: 10px;
-        }
-        .controls input,
-        .controls textarea,
-        .controls button {
-          font-size: 12px;
-          padding: 6px;
-          border-radius: 8px;
-        }
-        main {
-          gap: 10px;
-          padding: 0;
-        }
-        .today-row {
-          grid-template-columns: 1fr auto auto auto; /* Name + 3 buttons */
-          padding: 6px;
-          font-size: 13px;
-        }
-        .today-row button {
-          padding: 4px 6px;
-          font-size: 12px;
-          border-radius: 6px;
-        }
+      /* Fee specific */
+      .fee-paid {
+        background: linear-gradient(145deg, #f0fff4, #ecffe9);
+        border-left: 4px solid var(--present);
+      }
+      .fee-unpaid {
+        background: linear-gradient(145deg, #fff5f5, #ffecec);
+        border-left: 4px solid var(--absent);
+      }
+      .mark-btn {
+        padding: 6px 8px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        background: linear-gradient(135deg, var(--accent), #5b21b6);
+        color: #fff;
+      }
 
-        /* Hide less-used buttons in mobile */
-        .today-row .edit-btn,
-        .today-row .delete-btn,
-        .today-row .history-btn {
-          display: none;
-        }
-      }
-      .hidden {
-        display: none !important;
-      }
+      /* responsive */
       @media (max-width: 768px) {
         main {
-          display: block; /* stack instead of side-by-side */
+          display: block;
         }
         section,
         aside {
@@ -326,6 +282,10 @@
           margin-bottom: 14px;
         }
       }
+      .hidden {
+        display: none !important;
+      }
+
       #historyPopup {
         display: none;
         position: fixed;
@@ -333,15 +293,7 @@
         background: rgba(0, 0, 0, 0.6);
         align-items: center;
         justify-content: center;
-        z-index: 9999; /* ensures popup is visible */
-      }
-      .fee-paid {
-        background: #e8fff0;
-        border-left: 4px solid #16a34a;
-      }
-      .fee-unpaid {
-        background: #fff0f0;
-        border-left: 4px solid #ef4444;
+        z-index: 9999;
       }
     </style>
   </head>
@@ -365,9 +317,11 @@
     </button>
 
     <header>
-      <h1>🏸 Attendance Manager</h1>
+      <h1>🏸 Attendance & Fee Manager</h1>
       <div class="controls">
         <input id="playerName" placeholder="Add player…" />
+        <!-- new: join date -->
+        <input type="date" id="playerJoinDate" title="Join date (optional)" />
         <button id="addBtn" class="primary">Add</button>
         <textarea
           id="bulk"
@@ -396,7 +350,7 @@
         <div id="todayList"></div>
       </section>
 
-      <!-- Side / Summary -->
+      <!-- Side / Summary + Fees -->
       <aside>
         <div class="card">
           <h2>Summary</h2>
@@ -409,7 +363,6 @@
               <h3>Present Today</h3>
               <p id="sumTodayP">0</p>
             </div>
-
             <div class="stat">
               <h3>Days Tracked</h3>
               <p id="sumDays">0</p>
@@ -430,6 +383,89 @@
               <h3>Avg % (month)</h3>
               <p id="sumPct">0%</p>
             </div>
+          </div>
+        </div>
+        <div id="paidUnpaidList"></div>
+
+        <!-- Fees Card: per-month table + totals -->
+        <div class="card">
+          <h2>Fees</h2>
+          <div class="toolbar">
+            <label style="display: flex; gap: 8px; align-items: center">
+              Month:
+              <input type="month" id="feeMonth" />
+            </label>
+            <button id="refreshFees" class="ghost">Refresh</button>
+          </div>
+
+          <div id="feeSummary" style="margin-bottom: 10px">
+            <div style="display: flex; gap: 12px; flex-wrap: wrap">
+              <div
+                style="
+                  padding: 8px;
+                  border-radius: 8px;
+                  background: #f8fbff;
+                  border: 1px solid var(--border);
+                "
+              >
+                <div style="font-size: 12px; color: var(--muted)">
+                  Students Due
+                </div>
+                <div id="feeDue" style="font-weight: 700">0</div>
+              </div>
+              <div
+                style="
+                  padding: 8px;
+                  border-radius: 8px;
+                  background: #f8fbff;
+                  border: 1px solid var(--border);
+                "
+              >
+                <div style="font-size: 12px; color: var(--muted)">Paid</div>
+                <div id="feePaidCount" style="font-weight: 700">0</div>
+              </div>
+              <div
+                style="
+                  padding: 8px;
+                  border-radius: 8px;
+                  background: #f8fbff;
+                  border: 1px solid var(--border);
+                "
+              >
+                <div style="font-size: 12px; color: var(--muted)">Unpaid</div>
+                <div id="feeUnpaidCount" style="font-weight: 700">0</div>
+              </div>
+              <div
+                style="
+                  padding: 8px;
+                  border-radius: 8px;
+                  background: #f8fbff;
+                  border: 1px solid var(--border);
+                "
+              >
+                <div style="font-size: 12px; color: var(--muted)">
+                  Collected
+                </div>
+                <div id="feeCollected" style="font-weight: 700">₹0</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-wrap" style="max-height: 360px">
+            <table id="feeTable">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Name</th>
+                  <th>Join Date</th>
+                  <th>Fee Date</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="feeBody"></tbody>
+            </table>
           </div>
         </div>
 
@@ -459,12 +495,13 @@
 
         // ---------- State ----------
         const KEY = "attendance_v1";
-        let S = load() || { players: [], records: {}, fees: {} }; // fees: { "YYYY-MM": { "Name": {date, amount} } }
+        let S = load() || { players: [], records: {}, fees: {}, joinDates: {} };
 
         const q = (id) => document.getElementById(id);
 
         // ---------- UI refs ----------
         const playerName = q("playerName"),
+          playerJoinDate = q("playerJoinDate"),
           addBtn = q("addBtn"),
           bulk = q("bulk"),
           bulkBtn = q("bulkBtn");
@@ -490,6 +527,13 @@
           sumA = q("sumA"),
           sumH = q("sumH"),
           sumPct = q("sumPct");
+        const feeMonth = q("feeMonth"),
+          feeBody = q("feeBody"),
+          feeDue = q("feeDue"),
+          feePaidCount = q("feePaidCount"),
+          feeUnpaidCount = q("feeUnpaidCount"),
+          feeCollected = q("feeCollected"),
+          refreshFees = q("refreshFees");
 
         // ---------- Utils ----------
         function today() {
@@ -565,13 +609,17 @@
         }
 
         // ---------- Players ----------
-        async function addPlayer(name) {
+        async function addPlayer(name, joinDate) {
           if (!name) return;
           if (S.players.includes(name)) {
             alert("Player already exists");
             return;
           }
           S.players.push(name);
+
+          // MAIN UPDATE: Always set join date with today’s date if missing
+          S.joinDates[name] = joinDate ? joinDate : today();
+
           save();
           renderToday();
           renderMonth();
@@ -581,13 +629,18 @@
 
         async function addBulk(text) {
           const names = text
-            .split(/[\n,]+/)
-            .map((s) => s.trim())
-            .filter(Boolean);
+            .split(/[,\\n]/) // Split by comma or newline
+            .map((s) => s.trim()) // Remove leading/trailing spaces
+            .filter(Boolean) // Remove empty strings
+            .filter((v, i, a) => a.indexOf(v) === i); // Remove duplicates
+
           for (const n of names) {
+            if (!n) continue; // Further safeguard for blank/undefined names
             if (!S.players.includes(n)) {
               S.players.push(n);
-              await syncToPlayerPage(n);
+              if (!S.joinDates) S.joinDates = {}; // always ensure S.joinDates exists
+              if (!S.joinDates[n]) S.joinDates[n] = today(); // assign join date if missing
+              await syncToPlayerPage(n); // Sync function (should handle missing player logic)
             }
           }
           save();
@@ -602,6 +655,11 @@
           Object.keys(S.records).forEach((d) => {
             if (S.records[d] && S.records[d][name]) delete S.records[d][name];
           });
+          if (S.fees)
+            Object.keys(S.fees).forEach((m) => {
+              if (S.fees[m] && S.fees[m][name]) delete S.fees[m][name];
+            });
+          if (S.joinDates && S.joinDates[name]) delete S.joinDates[name];
           save();
           renderToday();
           renderMonth();
@@ -624,19 +682,19 @@
               delete rec[oldName];
             }
           });
+          if (S.joinDates && S.joinDates[oldName]) {
+            S.joinDates[newName] = S.joinDates[oldName];
+            delete S.joinDates[oldName];
+          }
+          if (S.fees)
+            Object.keys(S.fees).forEach((m) => {
+              if (S.fees[m] && S.fees[m][oldName]) {
+                S.fees[m][newName] = S.fees[m][oldName];
+                delete S.fees[m][oldName];
+              }
+            });
           save();
           renderToday();
-          renderMonth();
-          updateSummary();
-        }
-
-        // ---------- Attendance Marking ----------
-        function mark(name, status, date) {
-          const d = ymd(date);
-          ensureDay(d);
-          S.records[d][name] = status;
-          save();
-          renderTodayRow(name);
           renderMonth();
           updateSummary();
         }
@@ -658,9 +716,7 @@
           datePick.value = d;
           todayLabel.textContent = `Date: ${d}`;
           todayList.innerHTML = "";
-
           ensureDay(d);
-
           S.players.forEach((name) =>
             todayList.appendChild(buildTodayRow(name, d))
           );
@@ -673,33 +729,28 @@
           const st = S.records[d]?.[name] || "";
           const sno = S.players.indexOf(name) + 1;
 
+          // Use feeMonth (the Fees card) to decide paid/unpaid
+          const monthToCheck = q("feeMonth").value || fmtMonthYYYYMM(d);
+          const paidInfo = S.fees?.[monthToCheck]?.[name];
+
           row.innerHTML = `
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span class="status-dot ${st ? "dot-" + st : ""}"></span>
-        <strong class="player-name">${sno}. ${escapeHtml(name)}</strong>
-        <span class="status-badge ${st}">${st ? labelFor(st) : "—"}</span>
-      </div>
-      <button class="good present-btn">Present</button>
-      <button class="bad absent-btn">Absent</button>
-      <button class="warn holiday-btn">Holiday</button>
-      <button class="ghost fee-btn">💰 Fee</button>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="status-dot ${st ? "dot-" + st : ""}"></span>
+      <strong class="player-name">${sno}. ${escapeHtml(name)}</strong>
+      <span class="status-badge ${st}">${st ? labelFor(st) : "—"}</span>
+      <span class="fee-status" style="margin-left:8px;font-size:12px;">
+        ${paidInfo ? `(Paid ₹${paidInfo.amount})` : `(Unpaid)`}
+      </span>
+    </div>
+    <button class="good present-btn">Present</button>
+    <button class="bad absent-btn">Absent</button>
+    <button class="warn holiday-btn">Holiday</button>
+    <button class="ghost fee-btn">💰 Fee</button>
 
-      <button class="ghost edit-btn">Edit</button>
-      <button class="ghost delete-btn">Delete</button>
-      <button class="ghost history-btn">History</button>
-    `;
-
-          // === Show Paid badge if fee recorded for this month ===
-          const currentDate = datePick.value || today();
-          const month = fmtMonthYYYYMM(currentDate);
-
-          const paid = S.fees?.[month]?.[name];
-          if (paid) {
-            const playerNameEl = row.querySelector(".player-name");
-            if (playerNameEl) {
-              playerNameEl.innerHTML += ` <span style="color:green;font-size:12px">(Paid ₹${paid.amount})</span>`;
-            }
-          }
+    <button class="ghost edit-btn">Edit</button>
+    <button class="ghost delete-btn">Delete</button>
+    <button class="ghost history-btn">History</button>
+  `;
 
           row.querySelector(".present-btn").onclick = () => mark(name, "P", d);
           row.querySelector(".absent-btn").onclick = () => mark(name, "A", d);
@@ -731,7 +782,6 @@
 
           return row;
         }
-
         function renderTodayRow(name) {
           const d = ymd(datePick.value);
           const row = q("row-" + cssId(name));
@@ -742,26 +792,142 @@
           const badge = row.querySelector(".status-badge");
           badge.className = "status-badge " + st;
           badge.textContent = st ? labelFor(st) : "—";
+
+          // Update name display
           const strongHolder = row.querySelector(".player-name");
           if (strongHolder) {
             const sno = S.players.indexOf(name) + 1;
             strongHolder.textContent = `${sno}. ${name}`;
           }
+
+          // Update paid/unpaid reliably using feeMonth
+          // Find the most recent payment month that exists for this player
+          let monthToCheck = q("feeMonth").value || fmtMonthYYYYMM(d);
+          let paidInfo = S.fees?.[monthToCheck]?.[name];
+
+          // if not found, check all months for last paid record
+          if (!paidInfo && S.fees) {
+            const months = Object.keys(S.fees).sort().reverse();
+            for (const m of months) {
+              if (S.fees[m]?.[name]) {
+                paidInfo = S.fees[m][name];
+                break;
+              }
+            }
+          }
+
+          // Find the fee-status span and replace its content (or create if missing)
+          let feeSpan = row.querySelector(".fee-status");
+          if (!feeSpan) {
+            feeSpan = document.createElement("span");
+            feeSpan.className = "fee-status";
+            feeSpan.style.marginLeft = "8px";
+            feeSpan.style.fontSize = "12px";
+            row.querySelector("div").appendChild(feeSpan);
+          }
+          if (paidInfo) {
+            feeSpan.textContent = `(Paid ₹${paidInfo.amount})`;
+            feeSpan.style.color = "green";
+          } else {
+            feeSpan.textContent = `(Unpaid)`;
+            feeSpan.style.color = "#c00";
+          }
         }
 
+        // ---------- Fees ----------
         function recordFee(name) {
-          const month = fmtMonthYYYYMM(today());
-          const date = today();
-          const amount = prompt(`Enter fee amount for ${name}:`, "500");
-          if (!amount) return;
+          // default month is the feeMonth (Fees card) or current month of today
+          const defaultMonth = q("feeMonth").value || fmtMonthYYYYMM(today());
+          let month = prompt(
+            "Enter month to record fee for (YYYY-MM):",
+            defaultMonth
+          );
+          if (!month) month = defaultMonth;
+          if (!/^\d{4}-\d{2}$/.test(month)) {
+            alert("Invalid month. Use YYYY-MM");
+            return;
+          }
 
+          const amount = prompt(`Enter fee amount for ${name}:`, "500");
+          if (amount === null) return; // user cancelled
+          const parsed = parseFloat(amount);
+          if (Number.isNaN(parsed)) {
+            alert("Please enter a valid number for amount");
+            return;
+          }
+          if (!S.fees) S.fees = {};
           if (!S.fees[month]) S.fees[month] = {};
-          S.fees[month][name] = { date, amount: parseFloat(amount) };
+          S.fees[month][name] = { date: today(), amount: parsed };
+
+          // ✅ Ensure feeMonth selector points to this month so UI checks right place
+          q("feeMonth").value = month;
+
           save();
-          alert(`${name} fee of ₹${amount} recorded on ${date}`);
-          renderToday();
+          // Refresh UI parts that depend on fees
+
+          renderTodayRow(name);
+          renderMonth();
+          updateSummary();
+          alert(
+            `${name} fee of ₹${parsed} recorded on ${today()} for ${month}`
+          );
+          renderFeesSummary();
         }
 
+        // ---------- Render Fees summary & table ----------
+        function renderFeesSummary() {
+          const ym = q("feeMonth").value || fmtMonthYYYYMM(today());
+          q("feeMonth").value = ym;
+          const dueList = [];
+          let paidCnt = 0,
+            unpaidCnt = 0,
+            collected = 0;
+
+          // Determine students due (joined on or before last day of month)
+          const [Y, M] = ym.split("-").map((n) => parseInt(n, 10));
+          const days = daysInMonth(Y, M);
+          const lastDay = `${ym}-${String(days).padStart(2, "0")}`;
+
+          S.players.forEach((name) => {
+            const join = S.joinDates?.[name] || today();
+            if (join <= lastDay) {
+              dueList.push(name);
+              const fee = S.fees?.[ym]?.[name];
+              if (fee) {
+                paidCnt++;
+                collected += Number(fee.amount || 0);
+              } else {
+                unpaidCnt++;
+              }
+            }
+          });
+
+          feeDue.textContent = dueList.length;
+          feePaidCount.textContent = paidCnt;
+          feeUnpaidCount.textContent = unpaidCnt;
+          feeCollected.textContent = "₹" + collected;
+
+          // Render rows
+          feeBody.innerHTML = "";
+          dueList.forEach((name, i) => {
+            const join = S.joinDates?.[name] || "-";
+            const f = S.fees?.[ym]?.[name];
+            const tr = document.createElement("tr");
+            tr.className = f ? "fee-paid" : "fee-unpaid";
+            tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td style="text-align:left">${escapeHtml(name)}</td>
+      <td>${join}</td>
+      <td>${f ? f.date : "-"}</td>
+      <td>${f ? "₹" + f.amount : "-"}</td>
+      <td>${f ? "✅ Paid" : "❌ Unpaid"}</td>
+      <td><button class="mark-btn" onclick="recordFee('${name}')">${
+              f ? "Update" : "Mark Paid"
+            }</button></td>
+    `;
+            feeBody.appendChild(tr);
+          });
+        }
         // ---------- Render: Monthly Report ----------
         function renderMonth() {
           let ym = monthPick.value;
@@ -841,6 +1007,7 @@
           monthFoot.appendChild(foot);
 
           updateSummary();
+          renderFeesSummary();
         }
 
         // ---------- Summary ----------
@@ -894,6 +1061,38 @@
           alert("All players marked Holiday for today");
         };
 
+        function renderPaidUnpaidLists() {
+          const ym = qfeeMonth.value || fmtMonthYYYYMM(today()); // ee month
+          const paidPlayers = [];
+          const unpaidPlayers = [];
+
+          S.players.forEach((name) => {
+            const fee = S.fees?.[ym]?.[name];
+            if (fee) paidPlayers.push({ name, fee });
+            else unpaidPlayers.push(name);
+          });
+
+          let paidHtml = `<table style="width:100%;border:1px solid #ccc;"><thead><tr><th>Paid Players</th><th>Amount</th></tr></thead><tbody>`;
+          paidPlayers.forEach(({ name, fee }) => {
+            paidHtml += `<tr><td>${escapeHtml(name)}</td><td>${
+              fee.amount
+            }</td></tr>`;
+          });
+          paidHtml += `</tbody></table>`;
+
+          let unpaidHtml = `<table style="width:100%;border:1px solid #ccc;"><thead><tr><th>Unpaid Players</th></tr></thead><tbody>`;
+          unpaidPlayers.forEach((name) => {
+            unpaidHtml += `<tr><td>${escapeHtml(name)}</td></tr>`;
+          });
+          unpaidHtml += `</tbody></table>`;
+
+          document.getElementById("paidUnpaidList").innerHTML =
+            `<div style="display:flex;gap:24px;">` +
+            `<div style="flex:1">${paidHtml}</div>` +
+            `<div style="flex:1">${unpaidHtml}</div>` +
+            `</div>`;
+        }
+
         // ---------- Import/Export/Clear ----------
         exportBtn.onclick = () => {
           const ym = monthPick.value || fmtMonthYYYYMM(today());
@@ -934,11 +1133,14 @@
               S = {
                 players: Array.isArray(obj.players) ? obj.players : [],
                 records: obj.records || {},
+                fees: obj.fees || {},
+                joinDates: obj.joinDates || {},
               };
               save();
               renderToday();
               renderMonth();
               updateSummary();
+              renderFeesSummary();
             } catch (err) {
               alert("Import failed: " + err.message);
             }
@@ -947,19 +1149,22 @@
         };
         clearBtn.onclick = () => {
           if (!confirm("Clear ALL data?")) return;
-          S = { players: [], records: {} };
+          S = { players: [], records: {}, fees: {}, joinDates: {} };
           save();
           renderToday();
           renderMonth();
           updateSummary();
+          renderFeesSummary();
         };
 
         // ---------- Events ----------
         addBtn.onclick = () => {
           const v = playerName.value.trim();
+          const jd = playerJoinDate.value;
           if (!v) return;
-          addPlayer(v);
+          addPlayer(v, jd);
           playerName.value = "";
+          playerJoinDate.value = "";
         };
         playerName.addEventListener("keydown", (e) => {
           if (e.key === "Enter") addBtn.click();
@@ -975,11 +1180,14 @@
         monthPick.onchange = () => {
           renderMonth();
           updateSummary();
+          renderFeesSummary();
         };
         refreshBtn.onclick = () => {
           renderMonth();
           updateSummary();
+          renderFeesSummary();
         };
+        refreshFees.onclick = () => renderFeesSummary();
         markAllP.onclick = () => {
           const d = ymd(datePick.value || today());
           ensureDay(d);
@@ -1000,25 +1208,14 @@
         };
         printBtn.onclick = () => window.print();
 
-        // ---------- Init ----------
-        datePick.value = today();
-        monthPick.value = fmtMonthYYYYMM(today());
-        renderToday();
-        renderMonth();
-        updateSummary();
-
+        // ---------- History / Edit / Delete helpers ----------
         function showHistory(name) {
           const hist = document.getElementById("historyPopup");
           const histBody = document.getElementById("histBody");
           const histTitle = document.getElementById("histTitle");
-
-          // Set title
           histTitle.textContent = "Attendance History - " + name;
-
-          // Clear old rows
           histBody.innerHTML = "";
 
-          // Show fee info for selected month
           const ym = monthPick.value || fmtMonthYYYYMM(today());
           const feeInfo = S.fees?.[ym]?.[name];
           if (feeInfo) {
@@ -1027,29 +1224,21 @@
             histBody.appendChild(feeRow);
           }
 
-          // Add attendance records
           Object.keys(S.records)
             .sort()
             .forEach((date) => {
               const st = S.records[date]?.[name];
               if (!st) return;
               const tr = document.createElement("tr");
-              tr.innerHTML = `
-        <td>${date}</td>
-        <td>${labelFor(st)}</td>
-        <td>
-          <button onclick="editAttendance('${name}','${date}','${st}')">✏ Edit</button>
-          <button onclick="deleteAttendance('${name}','${date}')">🗑 Delete</button>
-        </td>
-      `;
+              tr.innerHTML = `<td>${date}</td><td>${labelFor(
+                st
+              )}</td><td><button onclick="editAttendance('${name}','${date}','${st}')">✏ Edit</button> <button onclick="deleteAttendance('${name}','${date}')">🗑 Delete</button></td>`;
               histBody.appendChild(tr);
             });
 
-          // ✅ Display popup
           hist.style.display = "flex";
         }
-        window.showHistory = showHistory; // make it globally accessible
-
+        window.showHistory = showHistory;
         window.closeHist = function () {
           document.getElementById("historyPopup").style.display = "none";
         };
@@ -1077,17 +1266,29 @@
           updateSummary();
           showHistory(name);
         };
-      })();
 
-      // ====== Header toggle ======
-      const header = document.querySelector("header");
-      const toggleBtn = document.getElementById("toggleHeaderBtn");
-      toggleBtn.onclick = () => {
-        header.classList.toggle("hidden");
-        toggleBtn.textContent = header.classList.contains("hidden")
-          ? "Show Header"
-          : "Hide Header";
-      };
+        // Make recordFee global (used by fee table buttons)
+        window.recordFee = recordFee;
+
+        // ====== Header toggle ======
+        const header = document.querySelector("header");
+        const toggleBtn = document.getElementById("toggleHeaderBtn");
+        toggleBtn.onclick = () => {
+          header.classList.toggle("hidden");
+          toggleBtn.textContent = header.classList.contains("hidden")
+            ? "Show Header"
+            : "Hide Header";
+        };
+
+        // ---------- Init ----------
+        datePick.value = today();
+        monthPick.value = fmtMonthYYYYMM(today());
+        q("feeMonth").value = fmtMonthYYYYMM(today());
+        renderToday();
+        renderMonth();
+        updateSummary();
+        renderFeesSummary();
+      })();
     </script>
 
     <!-- Player Attendance History Popup -->
