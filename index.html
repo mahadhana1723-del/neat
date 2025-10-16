@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Badminton Manager — v2</title>
+    <link rel="icon" href="shuttle.png" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+    <style>
+      :root {
+        --bg: #f5f7fb;
+        --card: #ffffff;
+        --text: #0b1020;
+        --muted: #56606f;
+        --primary: #0ea5e9;
+        --accent: #10b981;
+        --line: #e6eef6;
+        --glass: rgba(255, 255, 255, 0.6);
+        --shadow: 0 8px 30px rgba(12, 18, 30, 0.08);
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: Inter, system-ui, Arial;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+      }
+
+      /* AUTH */
+      #authView {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 28px;
+        height: 100vh;
+      }
+      .auth-wrap {
+        display: flex;
+        gap: 28px;
+        align-items: center;
+        max-width: 980px;
+        width: 100%;
+        flex-wrap: wrap;
+      }
+      .auth-anim lottie-player {
+        max-width: 340px;
+      }
+      .auth-card {
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.8),
+          rgba(255, 255, 255, 0.95)
+        );
+        backdrop-filter: blur(8px);
+        border-radius: 18px;
+        padding: 34px;
+        width: 420px;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--line);
+      }
+      .auth-card h2 {
+        color: var(--primary);
+        margin-bottom: 6px;
+        font-size: 20px;
+      }
+      .auth-card p {
+        color: var(--muted);
+        margin-bottom: 18px;
+      }
+      .form-group {
+        margin-bottom: 14px;
+        position: relative;
+      }
+      .form-group input {
+        width: 100%;
+        padding: 12px 14px;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        font-size: 15px;
+      }
+      .form-row {
+        display: flex;
+        gap: 10px;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-radius: 999px;
+        border: none;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 6px 18px rgba(14, 165, 233, 0.14);
+      }
+      .ghost {
+        background: transparent;
+        border: 1px solid var(--line);
+        color: var(--text);
+      }
+      .small {
+        font-size: 13px;
+        padding: 8px 12px;
+        border-radius: 10px;
+      }
+      .muted-link {
+        color: var(--primary);
+        cursor: pointer;
+        text-decoration: underline;
+        font-size: 13px;
+      }
+
+      /* APP */
+      #appView {
+        display: none;
+        min-height: 100vh;
+        flex-direction: column;
+      }
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 18px;
+        background: var(--card);
+        box-shadow: var(--shadow);
+        border-bottom: 1px solid var(--line);
+        position: sticky;
+        top: 0;
+        z-index: 50;
+      }
+      .left-section {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        color: var(--primary);
+      }
+      .logo img {
+        width: 36px;
+      }
+      .menu-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        cursor: pointer;
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.6),
+          rgba(250, 250, 250, 0.8)
+        );
+      }
+      .menu-btn i {
+        font-size: 16px;
+      }
+      .right-section {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .user-photo {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+      }
+      .signout {
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: none;
+        background: #fff;
+        border: 1px solid var(--line);
+        cursor: pointer;
+      }
+
+      /* content */
+      .content {
+        padding: 20px;
+      }
+      .pane {
+        margin-top: 12px;
+        background: var(--card);
+        border-radius: 12px;
+        padding: 14px;
+        min-height: 60vh;
+        box-shadow: 0 6px 20px rgba(12, 18, 30, 0.04);
+      }
+
+      /* Popup Menu Card */
+      .overlay {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(6, 10, 14, 0.35);
+        z-index: 200;
+      }
+      .menu-card {
+        width: 680px;
+        max-width: 94%;
+        background: var(--card);
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid var(--line);
+        box-shadow: 0 18px 50px rgba(9, 12, 20, 0.35);
+      }
+      .menu-card h3 {
+        margin-bottom: 12px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+      }
+      .menu-item {
+        background: linear-gradient(
+          180deg,
+          rgba(250, 250, 250, 0.9),
+          rgba(255, 255, 255, 0.95)
+        );
+        border-radius: 12px;
+        padding: 6px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        border: 1px solid var(--line);
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
+      }
+      .menu-item:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 18px 40px rgba(14, 165, 233, 0.06);
+      }
+      .menu-item i {
+        font-size: 22px;
+        color: var(--primary);
+      }
+      .menu-item span {
+        font-weight: 600;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      /* responsive */
+      @media (max-width: 900px) {
+        .grid {
+          grid-template-columns: repeat(3, 1fr);
+        }
+      }
+      @media (max-width: 640px) {
+        .grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .menu-card {
+          padding: 16px;
+        }
+      }
+    </style>
+  </head>
+  <body class="app-v2">
+    <!-- AUTH -->
+    <div id="authView">
+      <div class="auth-wrap">
+        <div class="auth-anim">
+          <lottie-player
+            src="https://assets9.lottiefiles.com/packages/lf20_kyu7xb1v.json"
+            background="transparent"
+            speed="1"
+            loop
+            autoplay
+            style="width: 320px; height: 320px"
+          ></lottie-player>
+        </div>
+        <div class="auth-card">
+          <div id="signInForm">
+            <h2>Welcome Back 👋</h2>
+            <p>Sign in to manage tournaments or continue as guest.</p>
+            <div class="form-group">
+              <input id="username" type="text" placeholder="Username" />
+            </div>
+            <div class="form-group" style="position: relative">
+              <input
+                id="password"
+                type="password"
+                placeholder="Password"
+              /><button
+                class="small"
+                id="togglePass"
+                style="position: absolute; right: 8px; top: 6px"
+              >
+                Show
+              </button>
+            </div>
+            <div
+              style="
+                display: flex;
+                gap: 10px;
+                margin-top: 8px;
+                margin-bottom: 10px;
+              "
+            >
+              <button id="signInBtn" class="btn">Sign In</button>
+              <button id="guestBtn" class="btn ghost">Continue as Guest</button>
+            </div>
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+              "
+            >
+              <div class="muted-link" id="goSignUp">Create account</div>
+              <div style="color: var(--muted); font-size: 13px">
+                Forgot password?
+              </div>
+            </div>
+          </div>
+
+          <div id="signUpForm" style="display: none">
+            <h2>Create Account ✨</h2>
+            <p>Register below to get started.</p>
+            <div class="form-group">
+              <input id="newName" type="text" placeholder="Full name" />
+            </div>
+            <div class="form-group">
+              <input id="newEmail" type="email" placeholder="Email" />
+            </div>
+            <div class="form-group">
+              <input id="newPass" type="password" placeholder="Password" />
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 8px">
+              <button id="signUpBtn" class="btn">Create</button>
+              <button id="backSignIn" class="btn ghost">Back</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- APP -->
+    <div id="appView">
+      <div class="topbar">
+        <div class="left-section">
+          <div class="logo"><img src="shuttle.png" alt="logo" /> Badminton</div>
+          <div id="menuButton" class="menu-btn">
+            <i class="fa fa-bars"></i> Menu
+          </div>
+        </div>
+        <div class="right-section">
+          <div
+            id="userName"
+            style="font-weight: 600; color: var(--muted)"
+          ></div>
+          <div id="userPhoto" class="user-photo">U</div>
+          <button id="signOutBtn" class="signout">Sign Out</button>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="pane" id="mainPane">
+          <iframe
+            id="contentFrame"
+            style="
+              width: 100%;
+              height: 70vh;
+              border-radius: 10px;
+              border: none;
+              background: transparent;
+            "
+          ></iframe>
+        </div>
+      </div>
+    </div>
+
+    <!-- Popup Menu -->
+    <div id="overlay" class="overlay">
+      <div class="menu-card" role="dialog" aria-modal="true">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+          "
+        >
+          <h3>Apps</h3>
+          <button id="closeMenu" class="small ghost">Close</button>
+        </div>
+        <div class="grid" id="menuGrid">
+          <!-- Items injected by JS -->
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Basic state & selectors
+      const authView = document.getElementById("authView");
+      const appView = document.getElementById("appView");
+      const signInForm = document.getElementById("signInForm");
+      const signUpForm = document.getElementById("signUpForm");
+      const menuButton = document.getElementById("menuButton");
+      const overlay = document.getElementById("overlay");
+      const closeMenu = document.getElementById("closeMenu");
+      const menuGrid = document.getElementById("menuGrid");
+      const userName = document.getElementById("userName");
+      const userPhoto = document.getElementById("userPhoto");
+      const contentFrame = document.getElementById("contentFrame");
+
+      const TABS = [
+        {
+          id: "dashboard",
+          label: "Dashboard",
+          icon: "fa-home",
+          file: "dashboard.html",
+        },
+        {
+          id: "players",
+          label: "Players",
+          icon: "fa-users",
+          file: "PlayerPage.html",
+        },
+        {
+          id: "tournament",
+          label: "Tournaments",
+          icon: "fa-trophy",
+          file: "TournamentPage.html",
+        },
+        {
+          id: "roundrobin",
+          label: "Round Robin",
+          icon: "fa-layer-group",
+          file: "Round_Robin_updated.html",
+        },
+        {
+          id: "attendance",
+          label: "Attendance",
+          icon: "fa-check-square",
+          file: "Attendance_book.html",
+        },
+        {
+          id: "bracket",
+          label: "Brackets",
+          icon: "fa-sitemap",
+          file: "Bracket_tournament.html",
+        },
+      ];
+
+      // inject grid items
+      function buildMenuGrid() {
+        menuGrid.innerHTML = "";
+        TABS.forEach((t) => {
+          const d = document.createElement("div");
+          d.className = "menu-item";
+          d.innerHTML = `<i class="fa ${t.icon}"></i><span>${t.label}</span>`;
+          d.onclick = () => {
+            loadTab(t.id);
+            closeOverlay();
+          };
+          menuGrid.appendChild(d);
+        });
+      }
+
+      function openOverlay() {
+        overlay.style.display = "flex";
+        document.body.style.overflow = "hidden";
+      }
+      function closeOverlay() {
+        overlay.style.display = "none";
+        document.body.style.overflow = "";
+      }
+
+      menuButton.onclick = () => {
+        buildMenuGrid();
+        openOverlay();
+      };
+      closeMenu.onclick = closeOverlay;
+      overlay.onclick = (e) => {
+        if (e.target === overlay) closeOverlay();
+      };
+
+      // Auth controls
+      function showSignUp() {
+        signInForm.style.display = "none";
+        signUpForm.style.display = "block";
+      }
+      function showSignIn() {
+        signUpForm.style.display = "none";
+        signInForm.style.display = "block";
+      }
+      document.getElementById("goSignUp").onclick = showSignUp;
+      document.getElementById("backSignIn").onclick = showSignIn;
+
+      document.getElementById("togglePass").onclick = () => {
+        const p = document.getElementById("password");
+        if (!p) return;
+        if (p.type === "password") {
+          p.type = "text";
+          document.getElementById("togglePass").textContent = "Hide";
+        } else {
+          p.type = "password";
+          document.getElementById("togglePass").textContent = "Show";
+        }
+      };
+
+      function doSignIn(u) {
+        authView.style.display = "none";
+        appView.style.display = "flex";
+        userName.textContent = u.username ? `👤 ${u.username}` : "Guest";
+        userPhoto.textContent = u.username ? u.username[0].toUpperCase() : "G";
+        localStorage.setItem("user", JSON.stringify(u));
+        localStorage.setItem("token", u.token || "local-guest");
+        loadTab("dashboard");
+      }
+      function doSignOut() {
+        localStorage.removeItem("user");
+        localStorage.removeItem("token");
+        appView.style.display = "none";
+        authView.style.display = "flex";
+        contentFrame.src = "";
+      }
+
+      window.onload = () => {
+        const token = localStorage.getItem("token");
+        const u = localStorage.getItem("user");
+        if (token && u) {
+          try {
+            doSignIn(JSON.parse(u));
+          } catch (e) {
+            doSignOut();
+          }
+        }
+      };
+
+      // Sign in / up handlers (local mock + existing API option)
+      const API_URL = "https://theworldofsportsmans.onrender.com/api";
+
+      document.getElementById("signInBtn").onclick = async () => {
+        const uname = document.getElementById("username").value.trim();
+        const pass = document.getElementById("password").value.trim();
+        if (!uname) {
+          alert("Enter username");
+          return;
+        }
+        // try remote sign-in, fallback to local
+        try {
+          const res = await fetch(`${API_URL}/signin`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: uname, password: pass }),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            localStorage.setItem("token", data.token);
+            doSignIn(data.user);
+            return;
+          }
+        } catch (e) {
+          /* ignore and fallback */
+        }
+        // local mock sign-in
+        doSignIn({ username: uname });
+      };
+
+      document.getElementById("signUpBtn").onclick = async () => {
+        const n = document.getElementById("newName").value.trim();
+        const e = document.getElementById("newEmail").value.trim();
+        const p = document.getElementById("newPass").value.trim();
+        if (!n || !e || !p) {
+          alert("Fill fields");
+          return;
+        }
+        // try remote signup
+        try {
+          const res = await fetch(`${API_URL}/signup`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: n, email: e, password: p }),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            alert("Account created — please sign in");
+            showSignIn();
+            return;
+          } else {
+            alert(data.msg || "Sign up failed");
+          }
+        } catch (err) {
+          alert("Could not reach server — creating local account");
+          doSignIn({ username: n });
+        }
+      };
+
+      document.getElementById("guestBtn").onclick = () => {
+        doSignIn({ username: "Guest" });
+      };
+      document.getElementById("signOutBtn").onclick = doSignOut;
+
+      // load tab into iframe
+      function loadTab(id) {
+        const file = (TABS.find((t) => t.id === id) || TABS[0]).file;
+        contentFrame.src = file;
+      }
+    </script>
+  </body>
+</html>
