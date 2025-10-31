@@ -363,6 +363,15 @@
             <option>Batch4</option>
             <option>Batch5</option>
           </select>
+          <input
+            type="text"
+            id="customCategoryInput"
+            style="display: none; margin-left: 8px"
+            placeholder="Enter new category"
+          />
+          <button id="addCategoryBtn" style="display: none; margin-left: 4px">
+            Add
+          </button>
 
           <div class="category-nav" style="margin: 10px 0">
             <button id="prevCategoryBtn">⬅️ Prev Category</button>
@@ -470,6 +479,10 @@
             <h3 id="folderToggle" style="cursor: pointer">
               📂 Saved Tournaments
             </h3>
+            <button id="saveToCalendar">Save to Calendar</button>
+            <input type="date" id="calendarDate" style="margin-left: 8px" />
+            <button id="loadMatchesByDate">Load Matches</button>
+
             <button id="saveFolderBtn">Save Current Tournament</button>
             <button id="saveAllBtn">Save ALL Tournaments</button>
 
@@ -616,7 +629,6 @@
             );
           const on = (el, evt, fn) => el && el.addEventListener(evt, fn);
 
-          const categorySelect = q("categorySelect");
           const genderSelect = q("genderSelect");
           const genderLabel = q("genderLabel");
           const currentKeyTag = q("currentKeyTag");
@@ -662,6 +674,22 @@
             return a;
           }
 
+          function getCustomCategories() {
+            return JSON.parse(localStorage.getItem("customCategories") || "[]");
+          }
+
+          function addCustomCategory(newCategory) {
+            let customCategories = getCustomCategories();
+            if (!customCategories.includes(newCategory)) {
+              customCategories.push(newCategory);
+              localStorage.setItem(
+                "customCategories",
+                JSON.stringify(customCategories)
+              );
+            }
+          }
+
+          // Your IndexedDB open function
           async function openGlobalDB() {
             return new Promise((resolve, reject) => {
               const req = indexedDB.open(GLOBAL_DB_NAME, 1);
@@ -676,6 +704,35 @@
             });
           }
 
+          // Functions for custom category IndexedDB management
+          async function getCustomCategoriesFromDB() {
+            const db = await openGlobalDB();
+            return new Promise((resolve, reject) => {
+              const tx = db.transaction(GLOBAL_STORE, "readonly");
+              const store = tx.objectStore(GLOBAL_STORE);
+              const request = store.get("customCategories");
+              request.onsuccess = () => {
+                resolve(request.result?.categories || []);
+              };
+              request.onerror = () => resolve([]);
+            });
+          }
+
+          async function saveCustomCategoriesToDB(customCategories) {
+            const db = await openGlobalDB();
+            return new Promise((resolve, reject) => {
+              const tx = db.transaction(GLOBAL_STORE, "readwrite");
+              const store = tx.objectStore(GLOBAL_STORE);
+              store.put({
+                id: "customCategories",
+                categories: customCategories,
+              });
+              tx.oncomplete = () => resolve();
+              tx.onerror = () => reject();
+            });
+          }
+
+          // Category array
           const categories = [
             "U11-Boys",
             "U11-Girls",
@@ -694,6 +751,7 @@
             "Batch3",
             "Batch4",
             "Batch5",
+            "Custom",
           ];
 
           function keyFrom(cat, gen) {
@@ -722,6 +780,62 @@
             TOURNAMENTS[k].matchType = TOURNAMENTS[k].matchType || "Singles";
             return TOURNAMENTS[k];
           }
+
+          const categorySelect = document.getElementById("categorySelect");
+          const customCategoryInput = document.getElementById(
+            "customCategoryInput"
+          );
+          const addCategoryBtn = document.getElementById("addCategoryBtn");
+
+          // New: Async dropdown builder function
+          async function populateCategoryDropdown() {
+            // Standard categories
+            const defaultCategories = [...categories]; // Copy original array
+            // Get custom categories from IndexedDB
+            const customCategories = await getCustomCategoriesFromDB();
+            // Insert custom categories before "Custom"
+            const customIndex = defaultCategories.indexOf("Custom");
+            defaultCategories.splice(customIndex, 0, ...customCategories);
+            // Render dropdown
+            categorySelect.innerHTML = "";
+            defaultCategories.forEach((cat) => {
+              const op = document.createElement("option");
+              op.value = op.textContent = cat;
+              categorySelect.appendChild(op);
+            });
+          }
+
+          // Show/hide input for custom category
+          categorySelect.onchange = function () {
+            if (categorySelect.value === "Custom") {
+              customCategoryInput.style.display = "inline-block";
+              addCategoryBtn.style.display = "inline-block";
+            } else {
+              customCategoryInput.style.display = "none";
+              addCategoryBtn.style.display = "none";
+            }
+          };
+
+          // Add new custom category (with DB update and dropdown refresh)
+          addCategoryBtn.onclick = async function () {
+            const newCategory = customCategoryInput.value.trim();
+            if (!newCategory) {
+              alert("Enter category name!");
+              return;
+            }
+            let customCategories = await getCustomCategoriesFromDB();
+            if (!customCategories.includes(newCategory)) {
+              customCategories.push(newCategory);
+              await saveCustomCategoriesToDB(customCategories);
+            }
+            await populateCategoryDropdown();
+            categorySelect.value = newCategory;
+            customCategoryInput.style.display = "none";
+            addCategoryBtn.style.display = "none";
+          };
+
+          // DOM ready/init lo call cheyyandi (async context lo call cheyyandi)
+          populateCategoryDropdown();
 
           function updateGenderVisibility() {
             if (!categorySelect) return;
@@ -1661,6 +1775,69 @@
               reader.readAsText(f);
             });
           }
+          const saveToCalendarBtn = document.getElementById("saveToCalendar");
+          const calendarDateInput = document.getElementById("calendarDate");
+
+          saveToCalendarBtn.onclick = function () {
+            // Step 1: Get selected date
+            const selectedDate = calendarDateInput.value;
+            if (!selectedDate) {
+              alert("Please select a date to save your matches!");
+              return;
+            }
+
+            // Step 2: Get current tournament data
+            const state = getState(); // This usually holds players, matches etc.
+            // You can include more details if needed, like category or stats
+
+            // Step 3: Save to localStorage under that date
+            let savedMatchesByDate = {};
+            if (localStorage.getItem("savedMatchesByDate")) {
+              savedMatchesByDate = JSON.parse(
+                localStorage.getItem("savedMatchesByDate")
+              );
+            }
+            savedMatchesByDate[selectedDate] = {
+              category: state.matchType,
+              matches: state.matches,
+              players: state.players,
+            };
+            localStorage.setItem(
+              "savedMatchesByDate",
+              JSON.stringify(savedMatchesByDate)
+            );
+
+            alert("Matches saved for " + selectedDate);
+          };
+
+          document.getElementById("loadMatchesByDate").onclick = function () {
+            const selectedDate = calendarDateInput.value;
+            if (!selectedDate) {
+              alert("Please select a date!");
+              return;
+            }
+            let savedMatchesByDate = {};
+            if (localStorage.getItem("savedMatchesByDate")) {
+              savedMatchesByDate = JSON.parse(
+                localStorage.getItem("savedMatchesByDate")
+              );
+            }
+            if (!savedMatchesByDate[selectedDate]) {
+              alert("No matches found for this date!");
+              return;
+            }
+
+            // Load data into the current tournament
+            const data = savedMatchesByDate[selectedDate];
+            // This assumes getState() and your app data structure allow resetting
+            // You may need to adapt for your actual structure
+            const st = getState();
+            st.matchType = data.category;
+            st.matches = data.matches;
+            st.players = data.players;
+
+            renderAll(); // Re-render UI based on loaded data
+          };
 
           function renderMatches() {
             const st = getState();
