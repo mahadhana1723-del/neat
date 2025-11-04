@@ -1106,6 +1106,14 @@
             `</div>`;
         }
 
+        // History modal: close on background tap anywhere (paste after page load/events)
+        document
+          .getElementById("historyPopup")
+          .addEventListener("click", function (e) {
+            // Only when clicking overlay, not content
+            if (e.target === this) closeHist();
+          });
+
         // ---------- Import/Export/Clear ----------
         exportBtn.onclick = () => {
           const ym = monthPick.value || fmtMonthYYYYMM(today());
