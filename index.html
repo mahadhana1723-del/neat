@@ -281,6 +281,20 @@
           padding: 16px;
         }
       }
+
+      .special-title {
+        font-size: 1.45rem;
+        font-weight: bold;
+        letter-spacing: 2px;
+        background: linear-gradient(90deg, #00c6ff, #0072ff 60%, #ffd700 100%);
+        background-clip: text;
+        -webkit-background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+        padding-left: 10px;
+        text-shadow: 1px 1px 6px rgba(0, 0, 0, 0.1);
+        border-bottom: 2px solid #ffd700;
+      }
     </style>
   </head>
   <body class="app-v2">
@@ -368,8 +382,10 @@
       <div class="topbar">
         <div class="left-section">
           <div class="logo">
-            <img src="player.png" alt="" />DHANA BADMINTON WORLD
+            <img src="player.png" alt="" />
+            <span class="special-title">DHANA BADMINTON WORLD</span>
           </div>
+
           <div id="menuButton" class="menu-btn">
             <i class="fa fa-bars"></i> Menu
           </div>
