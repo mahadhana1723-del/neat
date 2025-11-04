@@ -967,13 +967,17 @@
                 st || ""
               }</td>`;
             }
-            const total = cP + cA + cH;
-            const pct = total ? Math.round((cP / total) * 100) : 0;
+            // Correct percentage, ONLY Present & Absent
+            const totalConsidered = cP + cA;
+            let pct =
+              totalConsidered > 0
+                ? Math.round((cP / totalConsidered) * 100)
+                : 0;
+
             cells += `<td class="bP">${cP}</td><td class="bA">${cA}</td><td class="bH">${cH}</td><td>${pct}%</td>`;
             row.innerHTML = cells;
             monthBody.appendChild(row);
           });
-
           // Footer totals
           let foot = document.createElement("tr");
           let footCells = `<td><strong>Totals</strong></td>`;
@@ -1008,6 +1012,15 @@
 
           updateSummary();
           renderFeesSummary();
+        }
+
+        // Utility to calculate fee based on attendance %
+        function calculateFee(percent, feeAmount) {
+          if (percent >= 60) {
+            return Math.round(feeAmount * 0.6);
+          } else {
+            return Math.round(feeAmount * 0.4);
+          }
         }
 
         // ---------- Summary ----------
@@ -1208,6 +1221,104 @@
         };
         printBtn.onclick = () => window.print();
 
+        function getMonthlyCalendarForPlayer(name) {
+          const playerDates = [];
+          Object.keys(S.records).forEach((date) => {
+            if (S.records[date][name]) {
+              playerDates.push({ date, status: S.records[date][name] });
+            }
+          });
+          if (playerDates.length == 0) return "";
+
+          // Group by month
+          const groups = {};
+          playerDates.forEach(({ date, status }) => {
+            const [yyyy, mm] = date.split("-");
+            const key = yyyy + "-" + mm;
+            if (!groups[key]) groups[key] = [];
+            groups[key].push({ date, status });
+          });
+
+          let html = "";
+          Object.keys(groups)
+            .sort()
+            .reverse()
+            .forEach((key) => {
+              const monthArr = groups[key];
+              let present = 0,
+                absent = 0,
+                holiday = 0;
+              monthArr.forEach(({ status }) => {
+                if (status == "P") present++;
+                else if (status == "A") absent++;
+                else if (status == "H") holiday++;
+              });
+
+              // Percentage ONLY Present & Absent (NO holiday in denominator)
+              const totalConsidered = present + absent; // holidays ignore
+              let percent;
+              if (totalConsidered > 0) {
+                percent = ((present / totalConsidered) * 100).toFixed(1);
+              } else {
+                percent = "0";
+              }
+
+              html += `<h4 style="margin:16px 0 2px 0;">
+        ${key} -
+        <span style='color:green'>Present:</span> ${present}
+        <span style='color:red'>Absent:</span> ${absent}
+        <span style='color:orange'>Holiday:</span> ${holiday}
+        <span style="color:blue">Present %:</span> ${percent}%
+    </h4>`;
+              html += `<div class="calendar-block">`;
+              const totalDays = daysInMonth(
+                +key.split("-")[0],
+                +key.split("-")[1]
+              );
+              for (let d = 1; d <= totalDays; d++) {
+                const dayStr = key + "-" + String(d).padStart(2, "0");
+                const rec = monthArr.find((x) => x.date === dayStr);
+                let cls = "cal-day empty";
+                let txt = "<br>-";
+                if (rec) {
+                  if (rec.status == "P") {
+                    cls = "cal-day present";
+                    txt = "<br>P";
+                  } else if (rec.status == "A") {
+                    cls = "cal-day absent";
+                    txt = "<br>A";
+                  } else if (rec.status == "H") {
+                    cls = "cal-day holiday";
+                    txt = "<br>H";
+                  }
+                }
+                html += `<span class="${cls}">${d}${txt}</span>`;
+              }
+              html += `</div>`;
+            });
+
+          return html;
+        }
+
+        (function () {
+          if (document.getElementById("calblock-style")) return;
+          const style = document.createElement("style");
+          style.id = "calblock-style";
+          style.innerHTML = `
+    .calendar-block { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin:8px 0 16px 0; }
+    .cal-day { border:1px solid #ccc; padding:7px 0 3px 0; text-align:center; border-radius:6px; font-size:13px; }
+    .cal-day.present { background: #d4fff0; }
+    .cal-day.absent { background: #ffd6d6; }
+    .cal-day.holiday { background: #fffae1; }
+    .cal-day.empty { background: #eee; color: #aaa; }
+    `;
+          document.head.appendChild(style);
+        })();
+
+        function daysInMonth(year, month) {
+          return new Date(year, month, 0).getDate();
+        }
+
         // ---------- History / Edit / Delete helpers ----------
         function showHistory(name) {
           const hist = document.getElementById("historyPopup");
@@ -1215,6 +1326,9 @@
           const histTitle = document.getElementById("histTitle");
           histTitle.textContent = "Attendance History - " + name;
           histBody.innerHTML = "";
+
+          document.getElementById("histCalSummary").innerHTML =
+            getMonthlyCalendarForPlayer(name);
 
           const ym = monthPick.value || fmtMonthYYYYMM(today());
           const feeInfo = S.fees?.[ym]?.[name];
@@ -1317,6 +1431,7 @@
         "
       >
         <h2 id="histTitle">Attendance History</h2>
+        <div id="histCalSummary"></div>
         <table style="width: 100%; border-collapse: collapse">
           <thead>
             <tr>
