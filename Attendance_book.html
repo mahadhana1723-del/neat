@@ -295,6 +295,44 @@
         justify-content: center;
         z-index: 9999;
       }
+
+      #inactiveList {
+        max-height: 38vh; /* adjust (e.g. 300px or 40vh) */
+        overflow-y: auto;
+        padding: 8px;
+        border: 1px solid #e0e0e0;
+        background: #fafafa;
+        border-radius: 6px;
+      }
+
+      /* Search input style inside that block */
+      #inactiveSearch {
+        box-sizing: border-box;
+        width: 100%;
+        padding: 8px 10px;
+        margin-bottom: 8px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 14px;
+      }
+
+      /* Highlight matched text (optional) */
+      .inactive-row .match {
+        font-weight: 700;
+        text-decoration: underline;
+      }
+
+      /* Make table rows look tidy */
+      #inactiveList table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      #inactiveList td,
+      #inactiveList th {
+        padding: 6px;
+        border-bottom: 1px solid #eee;
+        text-align: left;
+      }
     </style>
   </head>
   <body>
@@ -329,6 +367,14 @@
         ></textarea>
         <button id="bulkBtn">Add Bulk</button>
         <button id="exportBtn" class="ghost">Export</button>
+        <button
+          id="sweepBtn"
+          class="ghost"
+          title="Move fully-absent players of selected month to Inactive"
+        >
+          Sweep Inactive
+        </button>
+
         <button id="importBtn" class="ghost">Import</button>
         <input type="file" id="importFile" hidden accept="application/json" />
         <button id="clearBtn" class="ghost">Clear All</button>
@@ -495,7 +541,18 @@
 
         // ---------- State ----------
         const KEY = "attendance_v1";
-        let S = load() || { players: [], records: {}, fees: {}, joinDates: {} };
+
+        let S = load() || {
+          players: [],
+          records: {},
+          fees: {},
+          joinDates: {},
+          inactive: [],
+        };
+        // right after S is created/loaded
+        S.inactive = Array.isArray(S.inactive)
+          ? Array.from(new Set(S.inactive))
+          : [];
 
         const q = (id) => document.getElementById(id);
 
@@ -535,6 +592,10 @@
           feeCollected = q("feeCollected"),
           refreshFees = q("refreshFees");
 
+        const sweepBtn = q("sweepBtn");
+        sweepBtn.onclick = () =>
+          monthlySweepToInactive(monthPick.value || fmtMonthYYYYMM(today()));
+
         // ---------- Utils ----------
         function today() {
           return new Date().toISOString().slice(0, 10);
@@ -543,8 +604,24 @@
           return new Date(d).toISOString().slice(0, 10);
         }
         function save() {
+          // ensure no duplicates in inactive before saving
+          S.inactive = Array.isArray(S.inactive)
+            ? Array.from(new Set(S.inactive))
+            : [];
           localStorage.setItem(KEY, JSON.stringify(S));
         }
+
+        function addToInactive(name) {
+          if (!name) return;
+          S.inactive = Array.isArray(S.inactive) ? S.inactive : [];
+          // avoid duplicates
+          if (!S.inactive.includes(name)) S.inactive.push(name);
+          // ensure removed from active players
+          S.players = (S.players || []).filter((n) => n !== name);
+          save();
+        }
+        window.addToInactive = addToInactive;
+
         function load() {
           try {
             return JSON.parse(localStorage.getItem(KEY) || "");
@@ -628,21 +705,28 @@
         }
 
         async function addBulk(text) {
-          const names = text
-            .split(/[,\\n]/) // Split by comma or newline
-            .map((s) => s.trim()) // Remove leading/trailing spaces
-            .filter(Boolean) // Remove empty strings
-            .filter((v, i, a) => a.indexOf(v) === i); // Remove duplicates
+          // Split on commas, semicolons, or any newline characters (CR/LF), allow multiple separators
+          const names = String(text)
+            .split(/[,\n\r;]+/) // split on comma, newline, carriage return or semicolon
+            .map((s) => s.trim()) // trim spaces
+            .filter(Boolean) // remove empty strings
+            .filter((v, i, a) => a.indexOf(v) === i); // remove duplicates, keep first occurrence
+
+          if (names.length === 0) return;
 
           for (const n of names) {
-            if (!n) continue; // Further safeguard for blank/undefined names
             if (!S.players.includes(n)) {
               S.players.push(n);
-              if (!S.joinDates) S.joinDates = {}; // always ensure S.joinDates exists
-              if (!S.joinDates[n]) S.joinDates[n] = today(); // assign join date if missing
-              await syncToPlayerPage(n); // Sync function (should handle missing player logic)
+              if (!S.joinDates) S.joinDates = {};
+              if (!S.joinDates[n]) S.joinDates[n] = today();
+              try {
+                await syncToPlayerPage(n);
+              } catch (err) {
+                console.error("Sync error for", n, err);
+              }
             }
           }
+
           save();
           renderToday();
           renderMonth();
@@ -650,21 +734,33 @@
         }
 
         function delPlayer(name) {
-          if (!confirm(`Delete ${name} (attendance only)?`)) return;
-          S.players = S.players.filter((n) => n !== name);
-          Object.keys(S.records).forEach((d) => {
-            if (S.records[d] && S.records[d][name]) delete S.records[d][name];
-          });
-          if (S.fees)
-            Object.keys(S.fees).forEach((m) => {
-              if (S.fees[m] && S.fees[m][name]) delete S.fees[m][name];
-            });
-          if (S.joinDates && S.joinDates[name]) delete S.joinDates[name];
+          if (
+            !confirm(
+              `Remove ${name} from active list? (Player data will be kept and can be restored)`
+            )
+          )
+            return;
+          addToInactive(name); // use helper to avoid duplicates and remove from S.players
+          // Keep attendance/fees/joinDates intact
+          renderToday();
+          renderMonth();
+          updateSummary();
+          renderFeesSummary();
+          renderInactiveList();
+        }
+
+        function restorePlayer(name) {
+          if (!confirm(`Restore ${name} to active players?`)) return;
+          if (!S.players.includes(name)) S.players.push(name);
+          S.inactive = (S.inactive || []).filter((n) => n !== name);
           save();
           renderToday();
           renderMonth();
           updateSummary();
+          renderFeesSummary();
+          renderInactiveList();
         }
+        window.restorePlayer = restorePlayer;
 
         function renamePlayer(oldName, newName) {
           if (!newName || oldName === newName) return;
@@ -1106,6 +1202,169 @@
             `</div>`;
         }
 
+        function escapeHtml(s) {
+          return String(s)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+        }
+
+        // Replace the old renderInactiveList() with this improved version
+        function renderInactiveList() {
+          const parent =
+            document.getElementById("paidUnpaidList") || document.body;
+
+          // create main container if missing
+          let container = document.getElementById("inactiveList");
+          if (!container) {
+            container = document.createElement("div");
+            container.id = "inactiveList";
+            container.style.marginTop = "12px";
+            parent.appendChild(container);
+          }
+
+          // Ensure we have a persistent search input (create only once)
+          let searchInput = document.getElementById("inactiveSearch");
+          if (!searchInput) {
+            searchInput = document.createElement("input");
+            searchInput.id = "inactiveSearch";
+            searchInput.placeholder = "Search inactive players...";
+            searchInput.autocomplete = "off";
+            searchInput.style.boxSizing = "border-box";
+            searchInput.style.width = "100%";
+            searchInput.style.padding = "8px 10px";
+            searchInput.style.marginBottom = "8px";
+            searchInput.style.border = "1px solid #ccc";
+            searchInput.style.borderRadius = "6px";
+            searchInput.style.fontSize = "14px";
+
+            // attach event (debounced) — do NOT recreate this input on each render
+            let debounceTimer = null;
+            searchInput.addEventListener("input", function () {
+              if (debounceTimer) clearTimeout(debounceTimer);
+              debounceTimer = setTimeout(() => {
+                renderInactiveRows(); // update only rows
+              }, 120);
+            });
+            searchInput.addEventListener("keydown", function (e) {
+              if (e.key === "Escape") {
+                searchInput.value = "";
+                renderInactiveRows();
+              }
+              if (e.key === "Enter") {
+                // focus first match row
+                const firstRow = document.querySelector(
+                  "#inactiveResults .inactive-row"
+                );
+                if (firstRow)
+                  firstRow.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center",
+                  });
+              }
+            });
+
+            // prepend the search input into container
+            container.appendChild(searchInput);
+          }
+
+          // create header and results wrapper if missing (only once)
+          let header = container.querySelector(".inactive-header");
+          if (!header) {
+            header = document.createElement("div");
+            header.className = "inactive-header";
+            header.innerHTML = `<h3 style="margin:6px 0">Inactive Players</h3>`;
+            container.appendChild(header);
+          }
+
+          let results = document.getElementById("inactiveResults");
+          if (!results) {
+            results = document.createElement("div");
+            results.id = "inactiveResults";
+            // make this scrollable with fixed height
+            results.style.maxHeight = "38vh";
+            results.style.overflowY = "auto";
+            results.style.padding = "4px";
+            container.appendChild(results);
+          }
+
+          // finally render rows (initial call)
+          renderInactiveRows();
+        }
+
+        // helper that renders only the rows into #inactiveResults
+        function renderInactiveRows() {
+          const inactive = Array.isArray(S.inactive) ? S.inactive : [];
+          const searchInput = document.getElementById("inactiveSearch");
+          const q = ((searchInput && searchInput.value) || "")
+            .trim()
+            .toLowerCase();
+
+          const filtered =
+            q.length === 0
+              ? inactive.slice()
+              : inactive.filter((name) => name.toLowerCase().includes(q));
+
+          const results = document.getElementById("inactiveResults");
+          if (!results) return;
+
+          if (filtered.length === 0) {
+            results.innerHTML = `<div style="color:#666;padding:8px">No inactive players found</div>`;
+            // update header count
+            const hdr = document.querySelector(
+              "#inactiveList .inactive-header h3"
+            );
+            if (hdr)
+              hdr.textContent = `Inactive Players (0/${inactive.length})`;
+            return;
+          }
+
+          // build a table (or simple list) for filtered results
+          const rows = filtered
+            .map((name) => {
+              const safe = escapeHtml(name).replace(/'/g, "\\'");
+              // highlight match
+              let displayName = escapeHtml(name);
+              if (q) {
+                const idx = name.toLowerCase().indexOf(q);
+                if (idx !== -1) {
+                  const before = escapeHtml(name.slice(0, idx));
+                  const match = escapeHtml(name.slice(idx, idx + q.length));
+                  const after = escapeHtml(name.slice(idx + q.length));
+                  displayName = `${before}<span class="match">${match}</span>${after}`;
+                }
+              }
+              return `<div class="inactive-row" data-name="${escapeHtml(
+                name
+              )}" id="inactive-row-${safe}" style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border-bottom:1px solid #eee">
+              <div style="flex:1">${displayName}</div>
+              <div style="flex:0 0 auto"><button onclick="restorePlayer('${safe}')">Restore</button></div>
+            </div>`;
+            })
+            .join("");
+
+          results.innerHTML =
+            `<div style="font-size:13px;color:#444;padding:6px 0">${filtered.length} / ${inactive.length}</div>` +
+            rows;
+
+          // auto-scroll to first match if query exists
+          if (q) {
+            const firstRow = results.querySelector(".inactive-row");
+            if (firstRow) {
+              setTimeout(
+                () =>
+                  firstRow.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center",
+                  }),
+                20
+              );
+            }
+          }
+        }
+
         // History modal: close on background tap anywhere (paste after page load/events)
         document
           .getElementById("historyPopup")
@@ -1403,6 +1662,9 @@
         };
 
         // ---------- Init ----------
+        S.inactive = Array.isArray(S.inactive)
+          ? Array.from(new Set(S.inactive))
+          : [];
         datePick.value = today();
         monthPick.value = fmtMonthYYYYMM(today());
         q("feeMonth").value = fmtMonthYYYYMM(today());
@@ -1410,6 +1672,7 @@
         renderMonth();
         updateSummary();
         renderFeesSummary();
+        renderInactiveList();
       })();
     </script>
 
