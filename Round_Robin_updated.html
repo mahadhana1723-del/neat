@@ -332,6 +332,97 @@
       #folderList li button:hover {
         background: #f8d7da;
       }
+      #savedTournaments button:hover {
+        opacity: 0.85;
+        transform: translateY(-1px);
+      }
+      /* --- Header redesign: paste into your existing <style> --- */
+      .header-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        align-items: center;
+        width: 100%;
+      }
+      .header-row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .header-left {
+        gap: 12px;
+      }
+      .header-right {
+        justify-content: flex-end;
+      }
+
+      .header-card {
+        background: linear-gradient(180deg, #ffffff, #fbfdff);
+        border-radius: 12px;
+        padding: 10px 12px;
+        box-shadow: var(--shadow-inset);
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+        width: 100%;
+      }
+
+      .header-title {
+        font-size: 18px;
+        font-weight: 700;
+        margin-right: 12px;
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .select-compact,
+      .input-compact,
+      .btn-compact,
+      .textarea-compact {
+        padding: 6px 10px;
+        border-radius: 8px;
+        border: 1px solid #e6eefc;
+        font-size: 13px;
+        background: var(--card);
+        box-shadow: var(--shadow-inset);
+      }
+
+      .select-compact {
+        min-width: 120px;
+      }
+      .input-compact {
+        min-width: 140px;
+      }
+      .btn-compact {
+        padding: 6px 10px;
+        cursor: pointer;
+      }
+      .btn-primary-compact {
+        background: linear-gradient(145deg, var(--primary), var(--accent));
+        color: #fff;
+        border: none;
+        box-shadow: var(--shadow-light);
+      }
+
+      .controls-column {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      /* Responsive: stack on narrow screens */
+      @media (max-width: 900px) {
+        .header-grid {
+          grid-template-columns: 1fr;
+        }
+        .header-right {
+          justify-content: flex-start;
+        }
+      }
     </style>
   </head>
   <body>
@@ -344,99 +435,155 @@
 
     <div id="tournamentTab" class="tabContent">
       <header>
-        <h1>Tournament-Round Robin</h1>
+        <div class="header-grid">
+          <!-- LEFT: Title + Category + Navigation -->
+          <div class="header-card header-left">
+            <div class="header-title">🏆 Tournament - Round Robin</div>
 
-        <div class="controls">
-          <label>Category</label>
-          <select id="categorySelect">
-            <option>Custom</option>
-            <option>U11</option>
-            <option>U13</option>
-            <option>U15</option>
-            <option>U17</option>
-            <option>U19</option>
-            <option>Men</option>
-            <option>Women</option>
-            <option>Batch1</option>
-            <option>Batch2</option>
-            <option>Batch3</option>
-            <option>Batch4</option>
-            <option>Batch5</option>
-          </select>
-          <input
-            type="text"
-            id="customCategoryInput"
-            style="display: none; margin-left: 8px"
-            placeholder="Enter new category"
-          />
-          <button id="addCategoryBtn" style="display: none; margin-left: 4px">
-            Add
-          </button>
+            <div style="display: flex; align-items: center; gap: 8px">
+              <label
+                style="font-weight: 600; font-size: 13px; margin-right: 6px"
+                >Category</label
+              >
+              <select id="categorySelect" class="select-compact"></select>
 
-          <div class="category-nav" style="margin: 10px 0">
-            <button id="prevCategoryBtn">⬅️ Prev Category</button>
-            <button id="nextCategoryBtn">➡️ Next Category</button>
+              <div style="display: flex; align-items: center; gap: 6px">
+                <input
+                  type="text"
+                  id="customCategoryInput"
+                  placeholder="Add category"
+                  class="input-compact"
+                  style="display: none"
+                />
+                <button
+                  id="addCategoryBtn"
+                  class="btn-compact"
+                  style="display: none"
+                >
+                  Add
+                </button>
+              </div>
+
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 6px;
+                  margin-left: 8px;
+                "
+              >
+                <button id="prevCategoryBtn" class="btn-compact">
+                  ⬅️ Prev
+                </button>
+                <button id="nextCategoryBtn" class="btn-compact">
+                  Next ➡️
+                </button>
+              </div>
+            </div>
           </div>
 
-          <label id="genderLabel">Gender</label>
-          <select id="genderSelect">
-            <option>Boys</option>
-            <option>Girls</option>
-          </select>
+          <!-- RIGHT: Gender, Match-type, Actions -->
+          <div class="header-card header-right">
+            <div style="display: flex; align-items: center; gap: 8px">
+              <label style="font-weight: 600; font-size: 13px">Gender</label>
+              <select id="genderSelect" class="select-compact">
+                <option>Boys</option>
+                <option>Girls</option>
+              </select>
 
-          <span id="currentKeyTag" class="legend"></span>
-        </div>
+              <label style="font-weight: 600; font-size: 13px; margin-left: 8px"
+                >Match Type</label
+              >
+              <select id="matchType" class="select-compact">
+                <option value="Singles">Singles</option>
+                <option value="Doubles">Doubles (manual)</option>
+                <option value="Auto-Doubles">Auto-Doubles</option>
+              </select>
+            </div>
 
-        <div class="controls">
-          <label>Match Type</label>
-          <select id="matchType">
-            <option value="Singles">Singles</option>
-            <option value="Doubles">Doubles (manual)</option>
-            <option value="Auto-Doubles">
-              Auto-Doubles (pair automatically)
-            </option>
-          </select>
-          <small style="align-self: center; color: #5b6b7a"
-            >Auto-Doubles pairs players 1+2,3+4...</small
+            <div
+              style="
+                width: 1px;
+                height: 36px;
+                background: #eef2ff;
+                margin: 0 12px;
+              "
+            ></div>
+
+            <div style="display: flex; align-items: center; gap: 8px">
+              <input
+                id="playerName"
+                class="input-compact"
+                placeholder="Player name"
+              />
+              <button id="addBtn" class="btn-compact">Add</button>
+
+              <textarea
+                id="bulk"
+                class="textarea-compact"
+                placeholder="Bulk add (one per line)"
+                style="width: 220px; height: 44px"
+              ></textarea>
+              <button id="bulkBtn" class="btn-compact">Bulk Add</button>
+              <button id="clearBtn" class="btn-compact">Clear</button>
+            </div>
+          </div>
+
+          <!-- SECOND ROW: Actions and Status (spans full width under the two cards) -->
+          <div
+            style="
+              grid-column: 1 / -1;
+              display: flex;
+              justify-content: space-between;
+              gap: 10px;
+              align-items: center;
+              margin-top: 8px;
+            "
           >
-        </div>
+            <div
+              style="
+                display: flex;
+                gap: 8px;
+                align-items: center;
+                flex-wrap: wrap;
+              "
+            >
+              <button id="buildBtn" class="btn-primary-compact">
+                Generate Matches
+              </button>
+              <button id="resetBtn" class="btn-compact">Reset Matches</button>
+              <button id="resetAllBtn" class="btn-compact">Reset All</button>
+              <button id="clearAllBtn" class="btn-compact">Clear All</button>
+              <button id="printBtn" class="btn-compact">Print</button>
+              <button id="exportBtn" class="btn-compact">Export</button>
+              <input
+                type="file"
+                id="importFile"
+                accept="application/json"
+                style="display: none"
+              />
+              <button id="importBtn" class="btn-compact">Import</button>
+              <button id="togglePlayersBtn" class="btn-compact">Players</button>
+            </div>
 
-        <div class="controls">
-          <input id="playerName" placeholder="Player name" />
-          <button class="btn" id="addBtn">Add</button>
-
-          <textarea id="bulk" placeholder="Bulk add (one per line)"></textarea>
-          <button class="btn" id="bulkBtn">Bulk Add</button>
-          <button class="btn" id="clearBtn">Clear Players</button>
-
-          <span class="legend" id="count">0 players</span>
-        </div>
-
-        <div class="controls">
-          <button class="btn primary" id="buildBtn">Generate Matches</button>
-          <button class="btn" id="resetBtn">Reset Matches</button>
-          <button class="btn" id="resetAllBtn">Reset All Categories</button>
-          <button class="btn" id="clearAllBtn">Clear All Categories</button>
-          <button class="btn" id="printBtn">Print</button>
-
-          <button class="btn" id="exportBtn">Export (All)</button>
-          <input
-            type="file"
-            id="importFile"
-            accept="application/json"
-            style="display: none"
-          />
-          <button class="btn" id="importBtn">Import (All)</button>
-
-          <button class="btn" id="togglePlayersBtn">Players Sidebar</button>
-        </div>
-
-        <div class="controls">
-          <label
-            ><input type="checkbox" id="randomizeBeforeBuild" /> Randomize
-            before build</label
-          >
-          <button class="btn" id="sampleBtn">Load Sample Data</button>
+            <div style="display: flex; gap: 10px; align-items: center">
+              <label style="font-size: 13px"
+                ><input type="checkbox" id="randomizeBeforeBuild" />
+                Randomize</label
+              >
+              <button id="sampleBtn" class="btn-compact">Load Sample</button>
+              <span
+                id="count"
+                style="font-weight: 600; color: var(--muted); margin-left: 8px"
+                >0 players</span
+              >
+              <span
+                id="currentKeyTag"
+                class="legend"
+                style="margin-left: 8px"
+              ></span>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -475,19 +622,145 @@
           <div id="playerDetails" class="card" style="margin-top: 12px">
             <p>Select a player from the sidebar…</p>
           </div>
-          <div id="savedTournaments">
-            <h3 id="folderToggle" style="cursor: pointer">
-              📂 Saved Tournaments
-            </h3>
-            <button id="saveToCalendar">Save to Calendar</button>
-            <input type="date" id="calendarDate" style="margin-left: 8px" />
-            <button id="loadMatchesByDate">Load Matches</button>
+          <!-- 🎯 Modern Saved Tournaments Panel -->
+          <div
+            id="savedTournaments"
+            style="
+              background: #f9fafb;
+              border: 1px solid #e5e7eb;
+              border-radius: 12px;
+              padding: 12px 16px;
+              margin-top: 12px;
+              max-width: 360px;
+              box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+              font-family: system-ui;
+            "
+          >
+            <div
+              style="
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+              "
+            >
+              <h3
+                id="folderToggle"
+                style="
+                  cursor: pointer;
+                  margin: 0;
+                  font-size: 16px;
+                  display: flex;
+                  align-items: center;
+                  gap: 4px;
+                "
+              >
+                📂 <span>Saved Tournaments</span>
+              </h3>
+              <button
+                id="saveToCalendar"
+                style="
+                  background: #3b82f6;
+                  color: white;
+                  border: none;
+                  padding: 6px 10px;
+                  border-radius: 6px;
+                  cursor: pointer;
+                  font-size: 13px;
+                "
+              >
+                💾 Save
+              </button>
+            </div>
 
-            <button id="saveFolderBtn">Save Current Tournament</button>
-            <button id="saveAllBtn">Save ALL Tournaments</button>
+            <div
+              style="
+                margin-top: 10px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: wrap;
+              "
+            >
+              <label
+                for="calendarDate"
+                style="font-size: 13px; font-weight: 500"
+                >📅 Date:</label
+              >
+              <input
+                type="date"
+                id="calendarDate"
+                style="
+                  padding: 4px 6px;
+                  border: 1px solid #d1d5db;
+                  border-radius: 6px;
+                  font-size: 13px;
+                "
+              />
+              <button
+                id="loadMatchesByDate"
+                style="
+                  background: #10b981;
+                  color: white;
+                  border: none;
+                  padding: 6px 10px;
+                  border-radius: 6px;
+                  cursor: pointer;
+                  font-size: 13px;
+                "
+              >
+                ⏏ Load
+              </button>
+            </div>
 
-            <ul id="folderList" style="display: none"></ul>
+            <div
+              style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap"
+            >
+              <button
+                id="saveFolderBtn"
+                style="
+                  background: #6366f1;
+                  color: white;
+                  border: none;
+                  padding: 6px 10px;
+                  border-radius: 6px;
+                  cursor: pointer;
+                  font-size: 13px;
+                "
+              >
+                💾 Save Current
+              </button>
+              <button
+                id="saveAllBtn"
+                style="
+                  background: #9333ea;
+                  color: white;
+                  border: none;
+                  padding: 6px 10px;
+                  border-radius: 6px;
+                  cursor: pointer;
+                  font-size: 13px;
+                "
+              >
+                💽 Save All
+              </button>
+            </div>
+
+            <ul
+              id="folderList"
+              style="
+                display: none;
+                margin-top: 10px;
+                list-style: none;
+                padding: 0;
+                max-height: 200px;
+                overflow-y: auto;
+                font-size: 13px;
+                border-top: 1px solid #e5e7eb;
+                padding-top: 8px;
+              "
+            ></ul>
           </div>
+
           <!-- Popup -->
           <div id="folderPopup" class="popup">
             <div class="popup-header">
@@ -522,8 +795,32 @@
 
     <div id="playersTab" class="tabContent" style="display: none">
       <h2>Players List</h2>
+
+      <!-- Search + controls -->
+      <div
+        style="
+          margin-bottom: 10px;
+          display: flex;
+          gap: 8px;
+          align-items: center;
+        "
+      >
+        <input
+          id="globalPlayerSearch"
+          placeholder="Search players by name"
+          style="
+            flex: 1;
+            padding: 6px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+          "
+        />
+        <button id="refreshGlobalPlayers" class="btn">Refresh</button>
+      </div>
+
       <div id="globalPlayerList"></div>
     </div>
+
     <!-- PLAYER POPUP - replace the existing #playerPopup block with this -->
     <div
       id="playerPopup"
@@ -858,28 +1155,85 @@
           );
           const addCategoryBtn = document.getElementById("addCategoryBtn");
 
-          // New: Async dropdown builder function
-          async function populateCategoryDropdown() {
-            // Standard categories
-            const defaultCategories = [...categories]; // Copy original array
-            // Get custom categories from IndexedDB
-            const customCategories = await getCustomCategoriesFromDB();
-            // Insert custom categories before "Custom"
-            if (customIndex >= 0) {
-              defaultCategories.splice(customIndex, 0, ...customCategories);
+          function updateCategoryColorChip() {
+            if (!categorySelect || !currentKeyTag) return;
+            const val = categorySelect.value;
+            const col = batchColors[val] || "";
+            if (col) {
+              currentKeyTag.style.background = col;
+              currentKeyTag.style.color = "#fff";
+              currentKeyTag.style.padding = "4px 8px";
+              currentKeyTag.style.borderRadius = "8px";
+              currentKeyTag.textContent = val;
             } else {
-              defaultCategories.push(...customCategories);
+              currentKeyTag.style.background = "transparent";
+              currentKeyTag.style.color = "";
+              currentKeyTag.textContent = `Now editing: ${getKey()}`;
             }
-            // Render dropdown
-            categorySelect.innerHTML = "";
-            defaultCategories.forEach((cat) => {
-              const op = document.createElement("option");
-              op.value = op.textContent = cat;
-              categorySelect.appendChild(op);
-            });
           }
 
-          // Show/hide input for custom category
+          async function populateCategoryDropdown() {
+            // 🎨 color batch list
+            const batchColors = {
+              Batch1: "#ef4444",
+              Batch2: "#f97316",
+              Batch3: "#f59e0b",
+              Batch4: "#eab308",
+              Batch5: "#84cc16",
+              Batch6: "#10b981",
+              Batch7: "#14b8a6",
+              Batch8: "#06b6d4",
+              Batch9: "#3b82f6",
+              Batch10: "#6366f1",
+              Batch11: "#8b5cf6",
+              Batch12: "#a855f7",
+              Batch13: "#ec4899",
+              Batch14: "#f43f5e",
+              Batch15: "#6b7280",
+            };
+
+            // Standard age + gender categories
+            const standardCats = [
+              "U11",
+              "U13",
+              "U15",
+              "U17",
+              "U19",
+              "Men",
+              "Women",
+            ];
+
+            // Color batch names
+            const colorBatches = Object.keys(batchColors);
+
+            // Custom categories from IndexedDB
+            const customCategories = await getCustomCategoriesFromDB();
+
+            // Combine all into one list + Custom option
+            const allCategories = [
+              ...standardCats,
+              ...colorBatches,
+              ...customCategories.filter(Boolean),
+              "Custom",
+            ];
+
+            // Render dropdown
+            categorySelect.innerHTML = "";
+            allCategories.forEach((cat) => {
+              const op = document.createElement("option");
+              op.value = op.textContent = cat;
+              if (batchColors[cat]) {
+                op.dataset.color = batchColors[cat];
+                op.style.color = batchColors[cat];
+              }
+              categorySelect.appendChild(op);
+            });
+
+            // Update the color indicator beside category name
+            updateCategoryColorChip();
+          }
+
+          // Show/hide input for custom category AND update color chip
           categorySelect.onchange = function () {
             if (categorySelect.value === "Custom") {
               customCategoryInput.style.display = "inline-block";
@@ -888,6 +1242,8 @@
               customCategoryInput.style.display = "none";
               addCategoryBtn.style.display = "none";
             }
+            // update UI color chip when selection changes
+            updateCategoryColorChip();
           };
 
           // Add new custom category (with DB update and dropdown refresh)
@@ -1087,7 +1443,9 @@
               bio: "",
               video: "",
               photo: "",
+              gender: genderSelect ? genderSelect.value : "Boys",
             });
+
             try {
               const playerObj = {
                 id: crypto.randomUUID(),
@@ -1139,7 +1497,9 @@
                 bio: "",
                 video: "",
                 photo: "",
+                gender: genderSelect ? genderSelect.value : "Boys",
               });
+
               try {
                 const playerObj = {
                   id: crypto.randomUUID(),
@@ -1217,17 +1577,58 @@
             saveDB();
           });
 
-          on(q("clearAllBtn"), "click", () => {
-            if (!confirm("Clear ALL players and matches from ALL categories?"))
-              return;
+          // SAFE: Clear ALL tournaments but preserve global players (and their scores)
+          on(q("clearAllBtn"), "click", async () => {
+            // clear confirmation explaining exactly what will be deleted/preserved
+            const ok = confirm(
+              "This will CLEAR players, matches and stats FROM ALL TOURNAMENTS (all categories).\n\n" +
+                "GLOBAL players stored separately (Players tab / IndexedDB) will NOT be deleted and their career data will be preserved.\n\n" +
+                "Are you sure you want to proceed?"
+            );
+            if (!ok) return;
+
+            // backup current tournaments to localStorage as a safety net
+            try {
+              const backupKey =
+                "backup_all_tournaments_" + new Date().toISOString();
+              localStorage.setItem(
+                backupKey,
+                JSON.stringify({
+                  tournaments: TOURNAMENTS,
+                  savedAt: new Date().toISOString(),
+                })
+              );
+              console.log(
+                "Backed up TOURNAMENTS to localStorage key:",
+                backupKey
+              );
+            } catch (e) {
+              console.warn("Backup failed:", e);
+            }
+
+            // Clear only the in-memory tournaments (do NOT touch IndexedDB 'players' store)
             for (const [k, st] of Object.entries(TOURNAMENTS)) {
-              st.players = [];
-              st.matches = [];
-              st.stats = new Map();
-              st.teams = [];
+              try {
+                st.players = []; // clears tournament-level roster
+                st.matches = []; // clears match list
+                st.stats = new Map(); // reset computed stats
+                st.teams = []; // reset teams
+              } catch (err) {
+                console.warn("Failed to clear tournament", k, err);
+              }
+            }
+
+            // Persist cleared tournaments and re-render
+            try {
+              saveDB(); // your existing function — saves TOURNAMENTS (not global players)
+            } catch (e) {
+              console.warn("saveDB failed after clearing tournaments", e);
             }
             renderAll();
-            saveDB();
+
+            alert(
+              "All tournaments cleared. Global players remain intact in Players tab."
+            );
           });
 
           function renderPlayersSidebar() {
@@ -1238,7 +1639,34 @@
               const card = document.createElement("div");
               card.className = "player-card";
               const img = document.createElement("img");
-              img.src = p.photo || "default.png";
+
+              // use p (the loop variable) instead of player
+              const gender = (p.gender || "").toLowerCase();
+
+              // Use gender-based default image
+              if (!p.photo || String(p.photo).trim() === "") {
+                if (
+                  gender === "female" ||
+                  gender === "girl" ||
+                  gender === "f"
+                ) {
+                  img.src = "default_girl.png";
+                } else {
+                  img.src = "default_boy.png";
+                }
+              } else {
+                img.src = p.photo;
+              }
+
+              // fallback if image fails to load
+              img.onerror = () => {
+                img.onerror = null;
+                img.src =
+                  gender === "female" || gender === "girl" || gender === "f"
+                    ? "default_girl.png"
+                    : "default_boy.png";
+              };
+
               const info = document.createElement("div");
               info.className = "player-info";
               const nm = document.createElement("div");
@@ -1250,6 +1678,7 @@
               meta.textContent = `P:${s.P} • W:${s.W} • L:${s.L}`;
               info.appendChild(nm);
               info.appendChild(meta);
+
               const del = document.createElement("button");
               del.className = "player-del";
               del.textContent = "❌";
@@ -1268,6 +1697,7 @@
                 renderAll();
                 saveDB();
               };
+
               card.appendChild(img);
               card.appendChild(info);
               card.appendChild(del);
@@ -1773,6 +2203,30 @@
             });
           })();
 
+          // add debounce helper (put once in your script)
+          function debounce(fn, wait) {
+            let t;
+            return function (...args) {
+              clearTimeout(t);
+              t = setTimeout(() => fn.apply(this, args), wait);
+            };
+          }
+
+          // wire global search input to re-render (200ms debounce)
+          const globalSearchEl = document.getElementById("globalPlayerSearch");
+          if (globalSearchEl) {
+            globalSearchEl.addEventListener(
+              "input",
+              debounce(() => {
+                try {
+                  renderGlobalPlayers();
+                } catch (e) {
+                  console.warn("renderGlobalPlayers error", e);
+                }
+              }, 200)
+            );
+          }
+
           // Export / Import
           function exportAllData() {
             try {
@@ -1883,6 +2337,7 @@
               matchType: state.matchType,
               players: state.players,
               matches: state.matches,
+              startDate: selectedDate,
               savedAt: new Date().toISOString(),
             });
             localStorage.setItem("savedMatchesByDate", JSON.stringify(saved));
@@ -1918,9 +2373,60 @@
             st.matches = data.matches || [];
             st.matchType = data.matchType || "Singles";
 
+            assignDatesToMatches(selectedDate, { mode: "perMatch" });
+
             saveDB();
             renderAll();
           };
+
+          // --- schedule helpers: assign dates to matches ---
+          function isoDateAddDays(isoDateStr, days) {
+            const d = new Date(isoDateStr + "T00:00:00");
+            d.setDate(d.getDate() + days);
+            return d.toISOString().slice(0, 10);
+          }
+
+          if (calendarDateInput) {
+            calendarDateInput.addEventListener("change", () => {
+              const sd = calendarDateInput.value;
+              if (!sd) return;
+              assignDatesToMatches(sd, { mode: "perMatch" });
+              saveDB();
+              renderAll();
+            });
+          }
+
+          /**
+           * Assign sequential dates to st.matches starting from startDate (YYYY-MM-DD).
+           * - mode "perMatch": each match gets next day.
+           * - mode "perRound": each round's matches share the same date (one date per round).
+           */
+          function assignDatesToMatches(startDate, { mode = "perMatch" } = {}) {
+            if (!startDate) return;
+            const st = getState();
+            if (!st.matches || !st.matches.length) return;
+            if (mode === "perRound") {
+              // group by round
+              const byRound = new Map();
+              for (const m of st.matches) {
+                if (!byRound.has(m.round)) byRound.set(m.round, []);
+                byRound.get(m.round).push(m);
+              }
+              let roundIndex = 0;
+              for (const [rnd] of [...byRound.entries()].sort(
+                (a, b) => a[0] - b[0]
+              )) {
+                const date = isoDateAddDays(startDate, roundIndex);
+                for (const m of byRound.get(rnd)) m.date = date;
+                roundIndex++;
+              }
+            } else {
+              // perMatch (default)
+              for (let i = 0; i < st.matches.length; i++) {
+                st.matches[i].date = isoDateAddDays(startDate, i);
+              }
+            }
+          }
 
           function renderMatches() {
             const st = getState();
@@ -1941,34 +2447,50 @@
               if (!byRound.has(m.round)) byRound.set(m.round, []);
               byRound.get(m.round).push(m);
             }
-            let html = `<tr><th style="text-align:left">S.No</th><th style="text-align:left">Round</th><th style="text-align:left">Match</th><th style="text-align:center">A</th><th style="text-align:center">B</th><th style="text-align:center">Save</th></tr>`;
+
+            let html = `<tr>
+    <th style="text-align:left">S.No</th>
+    <th style="text-align:left">Round</th>
+    <th style="text-align:left">Match</th>
+    <th style="text-align:center">A</th>
+    <th style="text-align:center">B</th>
+    <th style="text-align:center">Date</th>
+    <th style="text-align:center">Save</th>
+  </tr>`;
+
             let idx = 1;
+            // ensure we sort rounds numerically
             for (const [rnd, arr] of [...byRound.entries()].sort(
               (a, b) => a[0] - b[0]
             )) {
-              html += `<tr class="round-header"><td colspan="6">Round ${rnd}</td></tr>`;
+              // colspan updated to 7 (since we have 7 columns now)
+              html += `<tr class="round-header"><td colspan="7">Round ${rnd}</td></tr>`;
               for (const m of arr) {
                 const rowId = `m_${rnd}_${idx}`;
                 html += `
-                <tr data-row="${rowId}">
-                  <td>${idx}</td>
-                  <td>R${rnd}</td>
-                  <td>${esc(m.a)} vs ${esc(m.b)}</td>
-                  <td style="text-align:center"><input type="number" min="0" step="1" data-a value="${
-                    m.sa ?? ""
-                  }" ${m.saved ? "disabled" : ""}></td>
-                  <td style="text-align:center"><input type="number" min="0" step="1" data-b value="${
-                    m.sb ?? ""
-                  }" ${m.saved ? "disabled" : ""}></td>
-                  <td style="text-align:center"><button class="btn" data-save ${
-                    m.saved ? "disabled" : ""
-                  }>Save</button></td>
-                </tr>
-              `;
+        <tr data-row="${rowId}">
+          <td>${idx}</td>
+          <td>R${rnd}</td>
+          <td>${esc(m.a)} vs ${esc(m.b)}</td>
+          <td style="text-align:center"><input type="number" min="0" step="1" data-a value="${
+            m.sa ?? ""
+          }" ${m.saved ? "disabled" : ""}></td>
+          <td style="text-align:center"><input type="number" min="0" step="1" data-b value="${
+            m.sb ?? ""
+          }" ${m.saved ? "disabled" : ""}></td>
+          <td style="text-align:center">${m.date || ""}</td>
+          <td style="text-align:center"><button class="btn" data-save ${
+            m.saved ? "disabled" : ""
+          }>Save</button></td>
+        </tr>
+      `;
                 idx++;
               }
             }
+
             tbl.innerHTML = html;
+
+            // wire up the save buttons / inputs exactly as before
             let rowIdx = 0;
             for (const [rnd, arr] of [...byRound.entries()].sort(
               (a, b) => a[0] - b[0]
@@ -2185,65 +2707,312 @@
             }
           }
 
+          // --- Enhanced global players renderer (search + delete) ---
           async function renderGlobalPlayers() {
             const list = document.getElementById("globalPlayerList");
             if (!list) return;
             list.innerHTML = "";
+
+            // read the search term (case-insensitive)
+            const searchEl = document.getElementById("globalPlayerSearch");
+            const searchTerm =
+              searchEl && searchEl.value
+                ? String(searchEl.value).trim().toLowerCase()
+                : "";
+
             try {
-              const dbg = await openGlobalDB();
-              const tx = dbg.transaction("players", "readonly");
-              const req = tx.objectStore("players").getAll();
-              req.onsuccess = () => {
-                req.result.forEach((p, i) => {
-                  const div = document.createElement("div");
-                  div.className = "player-card";
-                  div.innerHTML = `
-    <img src="${p.photo || "default.png"}" />
-    <div class="player-meta">
-      <div class="player-name">${p.name} ${
-                    p.category ? "— " + p.category : ""
-                  }</div>
-      <div style="margin-top:6px">
-        <button class="add-btn">Add</button>
-        <button class="edit-btn">Edit</button>
-      </div>
-    </div>`;
-                  // Add handler
-                  div
-                    .querySelector(".add-btn")
-                    .addEventListener("click", (ev) => {
-                      ev.stopPropagation();
-                      const st = getState();
-                      if (!st.players.some((pp) => pp.name === p.name)) {
-                        st.players.push({
-                          name: p.name || "",
-                          id: p.id || "",
-                          aadhar: p.aadhar || "",
-                          age: p.age || "",
-                          country: p.country || "",
-                          bio: p.bio || "",
-                          photo: p.photo || "",
-                        });
-                        saveDB();
-                        renderAll();
-                        alert(`${p.name} added to ${getKey()}`);
-                      } else {
-                        alert(`${p.name} is already in this tournament`);
-                      }
-                    });
-                  // Edit handler (opens edit popup from global entry)
-                  div
-                    .querySelector(".edit-btn")
-                    .addEventListener("click", (ev) => {
-                      ev.stopPropagation();
-                      openPlayerPopup(p, i);
-                    });
-                  list.appendChild(div);
+              // openGlobalDB should be defined elsewhere in your file (the helper that returns an IDBDatabase)
+              const db = await openGlobalDB();
+              if (!db) {
+                console.warn("openGlobalDB() returned no db");
+                return;
+              }
+
+              const tx = db.transaction("players", "readonly");
+              const store = tx.objectStore("players");
+              const getAllReq = store.getAll();
+
+              getAllReq.onsuccess = () => {
+                const players = (getAllReq.result || []).sort((a, b) => {
+                  const na = String(a.name || "").toLowerCase();
+                  const nb = String(b.name || "").toLowerCase();
+                  return na.localeCompare(nb);
                 });
+
+                // If no players stored, show hint
+                if (!players.length) {
+                  const empty = document.createElement("div");
+                  empty.style.opacity = 0.7;
+                  empty.style.padding = "8px";
+                  empty.textContent = "No players in global DB.";
+                  list.appendChild(empty);
+                  return;
+                }
+
+                // render each player
+                players.forEach((p) => {
+                  const pname = String(p.name || "").trim();
+                  if (searchTerm && !pname.toLowerCase().includes(searchTerm))
+                    return;
+
+                  const row = document.createElement("div");
+                  row.className = "player-card";
+                  row.style.display = "flex";
+                  row.style.alignItems = "center";
+                  row.style.justifyContent = "space-between";
+                  row.style.padding = "8px";
+                  row.style.borderBottom = "1px solid rgba(0,0,0,0.06)";
+                  row.style.gap = "8px";
+
+                  // left: avatar + meta
+                  const left = document.createElement("div");
+                  left.style.display = "flex";
+                  left.style.alignItems = "center";
+                  left.style.gap = "10px";
+                  left.style.flex = "1";
+
+                  const img = document.createElement("img");
+                  img.src = p.photo || "default.png";
+                  img.alt = pname || "player";
+                  img.style.width = "44px";
+                  img.style.height = "44px";
+                  img.style.borderRadius = "50%";
+                  img.style.objectFit = "cover";
+                  img.style.flex = "none";
+
+                  const meta = document.createElement("div");
+                  meta.style.flex = "1";
+                  const nameDiv = document.createElement("div");
+                  nameDiv.textContent = pname || "(no name)";
+                  nameDiv.style.fontWeight = "600";
+                  nameDiv.className = "player-name";
+
+                  const subDiv = document.createElement("div");
+                  subDiv.style.fontSize = "12px";
+                  subDiv.style.color = "#666";
+                  const infoParts = [];
+                  if (p.country) infoParts.push(p.country);
+                  if (p.age) infoParts.push("age " + p.age);
+                  if (p.aadhar) infoParts.push("ID");
+                  subDiv.textContent = infoParts.join(" • ");
+
+                  meta.appendChild(nameDiv);
+                  meta.appendChild(subDiv);
+
+                  left.appendChild(img);
+                  left.appendChild(meta);
+
+                  // right: actions
+                  const actions = document.createElement("div");
+                  actions.style.display = "flex";
+                  actions.style.gap = "6px";
+                  actions.style.alignItems = "center";
+
+                  // Add button
+                  const addBtn = document.createElement("button");
+                  addBtn.className = "btn add-btn";
+                  addBtn.textContent = "Add";
+                  addBtn.title = "Add this global player to current tournament";
+                  addBtn.onclick = (ev) => {
+                    ev.stopPropagation();
+                    try {
+                      const st = getState();
+                      if (!st) {
+                        alert("No tournament state found");
+                        return;
+                      }
+                      if (!st.players) st.players = [];
+                      // avoid duplicates by name; you can change to match by id if you prefer
+                      const exists = st.players.some(
+                        (pp) => (pp.name || "").trim() === pname
+                      );
+                      if (exists) {
+                        alert(`${pname} is already in the current tournament.`);
+                        return;
+                      }
+                      st.players.push({
+                        name: p.name || "",
+                        id: p.id || "",
+                        aadhar: p.aadhar || "",
+                        age: p.age || "",
+                        country: p.country || "",
+                        bio: p.bio || "",
+                        photo: p.photo || "",
+                      });
+                      saveDB();
+                      renderAll();
+                      alert(`${pname} added to ${getKey()}`);
+                    } catch (e) {
+                      console.error("Add player to tournament failed", e);
+                      alert("Failed to add player. See console.");
+                    }
+                  };
+
+                  // Edit button
+                  const editBtn = document.createElement("button");
+                  editBtn.className = "btn edit-btn";
+                  editBtn.textContent = "Edit";
+                  editBtn.title = "Edit global player profile";
+                  editBtn.onclick = (ev) => {
+                    ev.stopPropagation();
+                    // open global player in popup (no tournament index)
+                    try {
+                      openPlayerPopup(p, null);
+                    } catch (e) {
+                      console.warn("openPlayerPopup failed", e);
+                    }
+                  };
+
+                  // Delete button
+                  const delBtn = document.createElement("button");
+                  delBtn.className = "btn del-btn";
+                  delBtn.textContent = "Delete";
+                  delBtn.title = "Delete this player from global DB";
+                  delBtn.onclick = async (ev) => {
+                    ev.stopPropagation();
+                    if (!confirm(`Delete global player "${pname}"?`)) return;
+                    const removeFromTournaments = confirm(
+                      "Also remove this player from ALL tournaments (and delete matches that reference them)?\n\nOK = Remove everywhere. Cancel = Remove only from global DB."
+                    );
+                    try {
+                      const dbDel = await openGlobalDB();
+                      const txDel = dbDel.transaction("players", "readwrite");
+                      const storeDel = txDel.objectStore("players");
+                      storeDel.delete(p.id);
+                      txDel.oncomplete = () => {
+                        // optionally remove from tournaments
+                        if (removeFromTournaments) {
+                          for (const [k, st] of Object.entries(
+                            TOURNAMENTS || {}
+                          )) {
+                            try {
+                              if (!st) continue;
+                              // remove from roster
+                              if (Array.isArray(st.players)) {
+                                st.players = st.players.filter(
+                                  (pp) => (pp.name || "").trim() !== pname
+                                );
+                              }
+                              // remove matches that reference the player's name (naive string includes; works for singles and teams)
+                              if (Array.isArray(st.matches)) {
+                                st.matches = st.matches.filter(
+                                  (m) =>
+                                    !(
+                                      String(m.a || "").includes(pname) ||
+                                      String(m.b || "").includes(pname)
+                                    )
+                                );
+                              }
+                              // reset stats for that tournament; we will recompute for all later
+                              st.stats = new Map();
+                            } catch (err) {
+                              console.warn("Error cleaning tournament", k, err);
+                            }
+                          }
+                          // recompute global stats if you have a function to do so; call here
+                          try {
+                            if (typeof recomputeStats === "function")
+                              recomputeStats();
+                          } catch (e) {
+                            console.warn("recomputeStats failed", e);
+                          }
+                          // persist tournament changes
+                          try {
+                            saveDB();
+                          } catch (e) {
+                            console.warn("saveDB after delete failed", e);
+                          }
+                        }
+
+                        // refresh UI
+                        try {
+                          if (typeof renderGlobalPlayers === "function")
+                            renderGlobalPlayers();
+                        } catch (e) {
+                          console.warn(e);
+                        }
+                        try {
+                          renderAll();
+                        } catch (e) {
+                          console.warn(e);
+                        }
+                        alert(
+                          `Player "${pname}" removed from global DB${
+                            removeFromTournaments ? " and from tournaments" : ""
+                          }.`
+                        );
+                      };
+                      txDel.onerror = (err) => {
+                        console.error("Failed to delete player from DB", err);
+                        alert("Failed to delete player — see console.");
+                      };
+                    } catch (err) {
+                      console.error("Delete player failed", err);
+                      alert("Delete failed — see console.");
+                    }
+                  };
+
+                  actions.appendChild(addBtn);
+                  actions.appendChild(editBtn);
+                  actions.appendChild(delBtn);
+
+                  // clicking row opens player popup (quick view)
+                  row.onclick = () => {
+                    try {
+                      openPlayerPopup(p, null);
+                    } catch (e) {
+                      /* ignore */
+                    }
+                  };
+
+                  row.appendChild(left);
+                  row.appendChild(actions);
+                  list.appendChild(row);
+                });
+
+                // if search applied but no rows shown, show helpful message
+                if (searchTerm) {
+                  const visible = list.querySelectorAll(".player-card");
+                  if (!visible.length) {
+                    const no = document.createElement("div");
+                    no.style.opacity = 0.7;
+                    no.style.padding = "8px";
+                    no.textContent = "No players found matching your search.";
+                    list.appendChild(no);
+                  }
+                }
+              };
+
+              getAllReq.onerror = (e) => {
+                console.warn("Failed to load global players", e);
+                const errDiv = document.createElement("div");
+                errDiv.style.padding = "8px";
+                errDiv.style.color = "red";
+                errDiv.textContent =
+                  "Failed to load global players (see console).";
+                list.appendChild(errDiv);
               };
             } catch (e) {
-              /* ignore */
+              console.error("renderGlobalPlayers error", e);
+              const errDiv = document.createElement("div");
+              errDiv.style.padding = "8px";
+              errDiv.style.color = "red";
+              errDiv.textContent = "Error rendering players (see console).";
+              list.appendChild(errDiv);
             }
+          }
+
+          const refreshBtn = document.getElementById("refreshGlobalPlayers");
+          if (refreshBtn) {
+            refreshBtn.addEventListener("click", () => {
+              // optional: clear search field first
+              // if (globalSearchEl) globalSearchEl.value = "";
+              try {
+                renderGlobalPlayers();
+              } catch (e) {
+                console.warn(e);
+              }
+            });
           }
 
           function renderAll() {
@@ -2252,7 +3021,8 @@
             renderMatches();
             renderStats();
             renderAllStats();
-            renderGlobalPlayers();
+            if (typeof renderGlobalPlayers === "function")
+              renderGlobalPlayers();
             saveDB();
           }
 
