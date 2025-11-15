@@ -1026,12 +1026,119 @@
           const statsBody = q("statsBody");
           const matchesTitle = q("matchesTitle");
 
+          const API_BASE = "http://localhost:3000"; // OR your PC LAN IP for mobile testing
+
+          // UI image fallbacks
+          const DEFAULT_BOY =
+            "data:image/svg+xml;utf8," +
+            encodeURIComponent(
+              `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><rect width="100%" height="100%" fill="#e6f0ff"/><text x="50%" y="55%" text-anchor="middle" fill="#355caa" font-size="16" font-family="Arial" dy=".3em">BOY</text></svg>`
+            );
+
+          const DEFAULT_GIRL =
+            "data:image/svg+xml;utf8," +
+            encodeURIComponent(
+              `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><rect width="100%" height="100%" fill="#fff0f6"/><text x="50%" y="55%" text-anchor="middle" fill="#d9467a" font-size="16" font-family="Arial" dy=".3em">GIRL</text></svg>`
+            );
+
+          // Category colors fix
+          const batchColors = {
+            U11: "#4d96ff",
+            U13: "#f72585",
+            U15: "#ffb703",
+            U17: "#38b000",
+            U19: "#6a4c93",
+            Men: "#3a0ca3",
+          };
+
           const DB_NAME = "TournamentDB";
           const DB_STORE = "tournaments";
           let db;
 
           const GLOBAL_DB_NAME = "PlayerDB";
           const GLOBAL_STORE = "players";
+
+          // ===== GLOBAL loadMatchesByDate (paste near top, after API_BASE) =====
+          window.loadMatchesByDate = async function (date) {
+            if (!date) return [];
+            try {
+              const res = await fetch(
+                `${API_BASE}/matches?date=${encodeURIComponent(date)}`
+              );
+              if (!res.ok) {
+                console.warn("loadMatchesByDate: server returned", res.status);
+                return [];
+              }
+              const rows = await res.json();
+              return rows.map((r) => ({
+                a: r.player1,
+                b: r.player2,
+                sa:
+                  r.score1 === null || r.score1 === undefined
+                    ? ""
+                    : Number(r.score1),
+                sb:
+                  r.score2 === null || r.score2 === undefined
+                    ? ""
+                    : Number(r.score2),
+                saved: r.score1 !== null && r.score2 !== null,
+                date: r.date
+                  ? typeof r.date === "string"
+                    ? r.date.slice(0, 10)
+                    : r.date.toISOString
+                    ? r.date.toISOString().slice(0, 10)
+                    : r.date
+                  : date,
+                round: r.round_no || r.round || 0,
+              }));
+            } catch (err) {
+              console.error("loadMatchesByDate error:", err);
+              return [];
+            }
+          };
+
+          // Load all players from server
+          async function loadPlayersFromServer() {
+            try {
+              const res = await fetch(`${API_BASE}/players`);
+              if (!res.ok) throw new Error("Server returned " + res.status);
+              const rows = await res.json();
+
+              // Convert server format → UI format
+              return rows.map((r) => ({
+                id: r.id,
+                s_no: r.s_no,
+                name: r.name,
+                phone: r.phone,
+                adhaar: r.adhaar,
+                due_date: r.due_date,
+                gender: "Boys",
+                photo: r.photo || "",
+              }));
+            } catch (err) {
+              console.error("loadPlayersFromServer failed:", err);
+              return [];
+            }
+          }
+
+          // Save a single player to server
+          async function savePlayerToServer(p) {
+            try {
+              const res = await fetch(`${API_BASE}/players`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(p),
+              });
+              if (!res.ok) {
+                const txt = await res.text().catch(() => res.statusText);
+                throw new Error("Server save failed: " + txt);
+              }
+              return await res.json();
+            } catch (err) {
+              console.warn("savePlayerToServer failed:", err);
+              throw err;
+            }
+          }
 
           function shuffleArray(arr) {
             const a = arr.slice();
@@ -1428,110 +1535,150 @@
             const so = document.getElementById("sidebarOverlay");
             if (so) so.classList.remove("active");
           });
-
+          // ----- FIXED ADD PLAYER -----
+          // ---------- SAFE addBtn handler ----------
           on(addBtn, "click", async () => {
-            if (!playerName) return;
-            const v = playerName.value.trim();
-            if (!v) return;
-            const st = getState();
-            st.players.push({
-              name: v,
-              id: "",
-              aadhar: "",
-              age: "",
-              country: "",
-              bio: "",
-              video: "",
-              photo: "",
-              gender: genderSelect ? genderSelect.value : "Boys",
-            });
-
             try {
+              if (!playerName) return;
+              const nameVal = playerName.value.trim();
+              if (!nameVal) return;
+
+              // create a clean object to store in IndexedDB and send to server
               const playerObj = {
-                id: crypto.randomUUID(),
-                name: v,
-                age: 0,
-                aadhar: "",
-                country: "",
-                state: "",
-                district: "",
-                category: categorySelect ? categorySelect.value : "",
-                hand: "N/A",
+                id:
+                  crypto && crypto.randomUUID
+                    ? crypto.randomUUID()
+                    : Date.now().toString() + Math.floor(Math.random() * 10000),
+                s_no: 0,
+                name: nameVal,
+                phone: "",
+                adhaar: "",
+                due_date: null,
+                gender: genderSelect ? genderSelect.value : "Boys",
                 photo: "",
               };
-              const dbg = await openGlobalDB();
-              dbg
-                .transaction("players", "readwrite")
-                .objectStore("players")
-                .put(playerObj);
-              try {
-                new BroadcastChannel("tournament-sync").postMessage({
-                  type: "playerAdded",
-                  player: playerObj,
-                });
-              } catch (e) {}
-            } catch (e) {
-              console.warn("openGlobalDB failure", e);
-            }
-            if (playerName) playerName.value = "";
-            renderPlayersSidebar();
-            updateCount();
-            saveDB();
-          });
 
-          on(bulkBtn, "click", async () => {
-            if (!bulk) return;
-            const names = bulk.value
-              .split(/\r?\n|,/)
-              .map((s) => s.trim())
-              .filter(Boolean);
-            if (!names.length) return;
-            const st = getState();
-            for (const n of names) {
-              st.players.push({
-                name: n,
-                id: "",
-                aadhar: "",
-                age: "",
-                country: "",
-                bio: "",
-                video: "",
-                photo: "",
-                gender: genderSelect ? genderSelect.value : "Boys",
+              // add to current in-memory tournament state as well
+              const st = getState();
+              st.players = st.players || [];
+              // avoid duplicate by name
+              if (
+                !st.players.some(
+                  (p) => (p.name || "").trim() === playerObj.name
+                )
+              ) {
+                st.players.push({
+                  name: playerObj.name,
+                  id: playerObj.id,
+                  photo: playerObj.photo,
+                  gender: playerObj.gender,
+                });
+              }
+
+              // Save locally (IndexedDB) — put inside a single transaction and await completion
+              const dbg = await openGlobalDB();
+              const tx = dbg.transaction("players", "readwrite");
+              const store = tx.objectStore("players");
+              store.put(playerObj);
+              await new Promise((res, rej) => {
+                tx.oncomplete = res;
+                tx.onerror = () => rej(tx.error);
               });
 
-              try {
+              // Save to server (best-effort)
+              savePlayerToServer(playerObj)
+                .then(() => {
+                  console.log("Saved to SERVER:", playerObj);
+                })
+                .catch((err) => {
+                  console.warn("Server save failed (non-blocking):", err);
+                });
+
+              // UI updates
+              playerName.value = "";
+              renderPlayersSidebar();
+              updateCount();
+              saveDB();
+            } catch (err) {
+              console.error("addBtn handler error:", err);
+              alert("Failed to add player — see console.");
+            }
+          });
+
+          // ---------- SAFE bulkBtn handler ----------
+          on(bulkBtn, "click", async () => {
+            try {
+              if (!bulk) return;
+              const names = bulk.value
+                .split(/\r?\n|,/)
+                .map((s) => s.trim())
+                .filter(Boolean);
+              if (!names.length) return;
+
+              const st = getState();
+              st.players = st.players || [];
+
+              // open one transaction for all puts (faster + atomic)
+              const dbg = await openGlobalDB();
+              const tx = dbg.transaction("players", "readwrite");
+              const store = tx.objectStore("players");
+
+              for (const nm of names) {
                 const playerObj = {
-                  id: crypto.randomUUID(),
-                  name: n,
-                  age: 0,
-                  aadhar: "",
-                  country: "",
-                  state: "",
-                  district: "",
-                  category: categorySelect ? categorySelect.value : "",
-                  hand: "N/A",
+                  id:
+                    crypto && crypto.randomUUID
+                      ? crypto.randomUUID()
+                      : Date.now().toString() +
+                        Math.floor(Math.random() * 10000),
+                  s_no: 0,
+                  name: nm,
+                  phone: "",
+                  adhaar: "",
+                  due_date: null,
+                  gender: genderSelect ? genderSelect.value : "Boys",
                   photo: "",
                 };
-                const dbg = await openGlobalDB();
-                dbg
-                  .transaction("players", "readwrite")
-                  .objectStore("players")
-                  .put(playerObj);
-                try {
-                  new BroadcastChannel("tournament-sync").postMessage({
-                    type: "playerAdded",
-                    player: playerObj,
+
+                // add to in-memory state if not duplicate
+                if (
+                  !st.players.some(
+                    (p) => (p.name || "").trim() === playerObj.name
+                  )
+                ) {
+                  st.players.push({
+                    name: playerObj.name,
+                    id: playerObj.id,
+                    photo: playerObj.photo,
+                    gender: playerObj.gender,
                   });
-                } catch (e) {}
-              } catch (e) {
-                console.warn("bulk openGlobalDB failed", e);
+                }
+
+                try {
+                  store.put(playerObj);
+                } catch (e) {
+                  console.warn("bulk put error for", nm, e);
+                }
+
+                // fire-and-forget server save (non-blocking)
+                savePlayerToServer(playerObj).catch((err) =>
+                  console.warn("bulk server error:", err)
+                );
               }
+
+              // wait transaction complete
+              await new Promise((res, rej) => {
+                tx.oncomplete = res;
+                tx.onerror = () => rej(tx.error);
+              });
+
+              bulk.value = "";
+              renderPlayersSidebar();
+              updateCount();
+              saveDB();
+            } catch (err) {
+              console.error("bulkBtn handler error:", err);
+              alert("Bulk add failed — see console.");
             }
-            bulk.value = "";
-            renderPlayersSidebar();
-            updateCount();
-            saveDB();
           });
 
           on(clearBtn, "click", () => {
@@ -2387,10 +2534,38 @@
           }
 
           if (calendarDateInput) {
-            calendarDateInput.addEventListener("change", () => {
+            calendarDateInput.addEventListener("change", async () => {
               const sd = calendarDateInput.value;
               if (!sd) return;
+              // Assign dates to local matches
               assignDatesToMatches(sd, { mode: "perMatch" });
+
+              // Then load any saved matches for this date and merge (prefer server values)
+              const serverMatches = await loadMatchesByDate(sd);
+              if (serverMatches && serverMatches.length) {
+                const st = getState();
+                // For each server match, find matching local match by a+b key and overwrite scores
+                const map = new Map();
+                serverMatches.forEach((m) => {
+                  map.set(m.a + "_" + m.b, m);
+                  map.set(m.b + "_" + m.a, m); // both orders
+                });
+
+                st.matches.forEach((local) => {
+                  const key = local.a + "_" + local.b;
+                  if (map.has(key)) {
+                    const sm = map.get(key);
+                    local.sa = sm.sa;
+                    local.sb = sm.sb;
+                    local.saved = sm.saved;
+                    local.date = sm.date;
+                  }
+                });
+                recomputeStats();
+                renderMatches();
+                renderStats();
+                renderAllStats();
+              }
               saveDB();
               renderAll();
             });
@@ -2511,31 +2686,84 @@
                 btn.onclick = () => {
                   const a = (inA?.value || "").toString().trim();
                   const b = (inB?.value || "").toString().trim();
+
                   if (a === "" || b === "") {
                     alert("Enter both scores");
                     return;
                   }
-                  const na = parseInt(a, 10),
-                    nb = parseInt(b, 10);
+
+                  const na = parseInt(a, 10);
+                  const nb = parseInt(b, 10);
+
                   if (Number.isNaN(na) || Number.isNaN(nb)) {
                     alert("Scores must be numbers");
                     return;
                   }
+
                   if (na === nb) {
                     alert("No ties allowed");
                     return;
                   }
+
+                  // save locally in the in-memory match object
                   m.sa = na;
                   m.sb = nb;
                   m.saved = true;
+
+                  // --- SAVE MATCH TO SERVER ---
+                  const matchWinner = na > nb ? m.a : m.b;
+                  // ensure API_BASE, categorySelect, genderSelect exist in scope
+                  fetch(`${API_BASE}/matches`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      date:
+                        m.date ||
+                        (typeof calendarDateInput !== "undefined"
+                          ? calendarDateInput.value
+                          : null),
+                      category:
+                        typeof categorySelect !== "undefined" &&
+                        categorySelect.value
+                          ? categorySelect.value
+                          : "",
+                      gender:
+                        typeof genderSelect !== "undefined" &&
+                        genderSelect.value
+                          ? genderSelect.value
+                          : "",
+                      player1: m.a,
+                      player2: m.b,
+                      score1: na,
+                      score2: nb,
+                      winner: matchWinner,
+                    }),
+                  })
+                    .then((res) => {
+                      if (!res.ok)
+                        throw new Error("Server error " + res.status);
+                      return res.json();
+                    })
+                    .then((data) => {
+                      console.log("Saved match to server:", data);
+                    })
+                    .catch((err) => {
+                      console.error("Match save error:", err);
+                      // optional: show user a non-blocking warning
+                      // alert("Failed to save match to server (will still keep locally).");
+                    });
+
+                  // disable inputs & update UI & persist local DB
                   if (inA) inA.disabled = true;
                   if (inB) inB.disabled = true;
                   btn.disabled = true;
+
                   recomputeStats();
                   renderStats();
                   renderAllStats();
                   saveDB();
                 };
+
                 rowIdx++;
               }
             }
@@ -2707,299 +2935,140 @@
             }
           }
 
-          // --- Enhanced global players renderer (search + delete) ---
           async function renderGlobalPlayers() {
             const list = document.getElementById("globalPlayerList");
             if (!list) return;
             list.innerHTML = "";
 
-            // read the search term (case-insensitive)
-            const searchEl = document.getElementById("globalPlayerSearch");
-            const searchTerm =
-              searchEl && searchEl.value
-                ? String(searchEl.value).trim().toLowerCase()
-                : "";
+            // Try to fetch from server
+            const searchTerm = (
+              document.getElementById("globalPlayerSearch")?.value || ""
+            )
+              .trim()
+              .toLowerCase();
+            const serverPlayers = await loadPlayersFromServer();
 
-            try {
-              // openGlobalDB should be defined elsewhere in your file (the helper that returns an IDBDatabase)
-              const db = await openGlobalDB();
-              if (!db) {
-                console.warn("openGlobalDB() returned no db");
-                return;
-              }
+            // If search term exists, filter locally
+            const filtered = serverPlayers.filter((p) => {
+              if (!searchTerm) return true;
+              return (p.name || "").toLowerCase().includes(searchTerm);
+            });
 
-              const tx = db.transaction("players", "readonly");
-              const store = tx.objectStore("players");
-              const getAllReq = store.getAll();
-
-              getAllReq.onsuccess = () => {
-                const players = (getAllReq.result || []).sort((a, b) => {
-                  const na = String(a.name || "").toLowerCase();
-                  const nb = String(b.name || "").toLowerCase();
-                  return na.localeCompare(nb);
-                });
-
-                // If no players stored, show hint
-                if (!players.length) {
-                  const empty = document.createElement("div");
-                  empty.style.opacity = 0.7;
-                  empty.style.padding = "8px";
-                  empty.textContent = "No players in global DB.";
-                  list.appendChild(empty);
-                  return;
-                }
-
-                // render each player
-                players.forEach((p) => {
-                  const pname = String(p.name || "").trim();
-                  if (searchTerm && !pname.toLowerCase().includes(searchTerm))
-                    return;
-
-                  const row = document.createElement("div");
-                  row.className = "player-card";
-                  row.style.display = "flex";
-                  row.style.alignItems = "center";
-                  row.style.justifyContent = "space-between";
-                  row.style.padding = "8px";
-                  row.style.borderBottom = "1px solid rgba(0,0,0,0.06)";
-                  row.style.gap = "8px";
-
-                  // left: avatar + meta
-                  const left = document.createElement("div");
-                  left.style.display = "flex";
-                  left.style.alignItems = "center";
-                  left.style.gap = "10px";
-                  left.style.flex = "1";
-
-                  const img = document.createElement("img");
-                  img.src = p.photo || "default.png";
-                  img.alt = pname || "player";
-                  img.style.width = "44px";
-                  img.style.height = "44px";
-                  img.style.borderRadius = "50%";
-                  img.style.objectFit = "cover";
-                  img.style.flex = "none";
-
-                  const meta = document.createElement("div");
-                  meta.style.flex = "1";
-                  const nameDiv = document.createElement("div");
-                  nameDiv.textContent = pname || "(no name)";
-                  nameDiv.style.fontWeight = "600";
-                  nameDiv.className = "player-name";
-
-                  const subDiv = document.createElement("div");
-                  subDiv.style.fontSize = "12px";
-                  subDiv.style.color = "#666";
-                  const infoParts = [];
-                  if (p.country) infoParts.push(p.country);
-                  if (p.age) infoParts.push("age " + p.age);
-                  if (p.aadhar) infoParts.push("ID");
-                  subDiv.textContent = infoParts.join(" • ");
-
-                  meta.appendChild(nameDiv);
-                  meta.appendChild(subDiv);
-
-                  left.appendChild(img);
-                  left.appendChild(meta);
-
-                  // right: actions
-                  const actions = document.createElement("div");
-                  actions.style.display = "flex";
-                  actions.style.gap = "6px";
-                  actions.style.alignItems = "center";
-
-                  // Add button
-                  const addBtn = document.createElement("button");
-                  addBtn.className = "btn add-btn";
-                  addBtn.textContent = "Add";
-                  addBtn.title = "Add this global player to current tournament";
-                  addBtn.onclick = (ev) => {
-                    ev.stopPropagation();
-                    try {
-                      const st = getState();
-                      if (!st) {
-                        alert("No tournament state found");
-                        return;
-                      }
-                      if (!st.players) st.players = [];
-                      // avoid duplicates by name; you can change to match by id if you prefer
-                      const exists = st.players.some(
-                        (pp) => (pp.name || "").trim() === pname
-                      );
-                      if (exists) {
-                        alert(`${pname} is already in the current tournament.`);
-                        return;
-                      }
-                      st.players.push({
-                        name: p.name || "",
-                        id: p.id || "",
-                        aadhar: p.aadhar || "",
-                        age: p.age || "",
-                        country: p.country || "",
-                        bio: p.bio || "",
-                        photo: p.photo || "",
-                      });
-                      saveDB();
-                      renderAll();
-                      alert(`${pname} added to ${getKey()}`);
-                    } catch (e) {
-                      console.error("Add player to tournament failed", e);
-                      alert("Failed to add player. See console.");
-                    }
-                  };
-
-                  // Edit button
-                  const editBtn = document.createElement("button");
-                  editBtn.className = "btn edit-btn";
-                  editBtn.textContent = "Edit";
-                  editBtn.title = "Edit global player profile";
-                  editBtn.onclick = (ev) => {
-                    ev.stopPropagation();
-                    // open global player in popup (no tournament index)
-                    try {
-                      openPlayerPopup(p, null);
-                    } catch (e) {
-                      console.warn("openPlayerPopup failed", e);
-                    }
-                  };
-
-                  // Delete button
-                  const delBtn = document.createElement("button");
-                  delBtn.className = "btn del-btn";
-                  delBtn.textContent = "Delete";
-                  delBtn.title = "Delete this player from global DB";
-                  delBtn.onclick = async (ev) => {
-                    ev.stopPropagation();
-                    if (!confirm(`Delete global player "${pname}"?`)) return;
-                    const removeFromTournaments = confirm(
-                      "Also remove this player from ALL tournaments (and delete matches that reference them)?\n\nOK = Remove everywhere. Cancel = Remove only from global DB."
-                    );
-                    try {
-                      const dbDel = await openGlobalDB();
-                      const txDel = dbDel.transaction("players", "readwrite");
-                      const storeDel = txDel.objectStore("players");
-                      storeDel.delete(p.id);
-                      txDel.oncomplete = () => {
-                        // optionally remove from tournaments
-                        if (removeFromTournaments) {
-                          for (const [k, st] of Object.entries(
-                            TOURNAMENTS || {}
-                          )) {
-                            try {
-                              if (!st) continue;
-                              // remove from roster
-                              if (Array.isArray(st.players)) {
-                                st.players = st.players.filter(
-                                  (pp) => (pp.name || "").trim() !== pname
-                                );
-                              }
-                              // remove matches that reference the player's name (naive string includes; works for singles and teams)
-                              if (Array.isArray(st.matches)) {
-                                st.matches = st.matches.filter(
-                                  (m) =>
-                                    !(
-                                      String(m.a || "").includes(pname) ||
-                                      String(m.b || "").includes(pname)
-                                    )
-                                );
-                              }
-                              // reset stats for that tournament; we will recompute for all later
-                              st.stats = new Map();
-                            } catch (err) {
-                              console.warn("Error cleaning tournament", k, err);
-                            }
-                          }
-                          // recompute global stats if you have a function to do so; call here
-                          try {
-                            if (typeof recomputeStats === "function")
-                              recomputeStats();
-                          } catch (e) {
-                            console.warn("recomputeStats failed", e);
-                          }
-                          // persist tournament changes
-                          try {
-                            saveDB();
-                          } catch (e) {
-                            console.warn("saveDB after delete failed", e);
-                          }
-                        }
-
-                        // refresh UI
-                        try {
-                          if (typeof renderGlobalPlayers === "function")
-                            renderGlobalPlayers();
-                        } catch (e) {
-                          console.warn(e);
-                        }
-                        try {
-                          renderAll();
-                        } catch (e) {
-                          console.warn(e);
-                        }
-                        alert(
-                          `Player "${pname}" removed from global DB${
-                            removeFromTournaments ? " and from tournaments" : ""
-                          }.`
-                        );
-                      };
-                      txDel.onerror = (err) => {
-                        console.error("Failed to delete player from DB", err);
-                        alert("Failed to delete player — see console.");
-                      };
-                    } catch (err) {
-                      console.error("Delete player failed", err);
-                      alert("Delete failed — see console.");
-                    }
-                  };
-
-                  actions.appendChild(addBtn);
-                  actions.appendChild(editBtn);
-                  actions.appendChild(delBtn);
-
-                  // clicking row opens player popup (quick view)
-                  row.onclick = () => {
-                    try {
-                      openPlayerPopup(p, null);
-                    } catch (e) {
-                      /* ignore */
-                    }
-                  };
-
-                  row.appendChild(left);
-                  row.appendChild(actions);
-                  list.appendChild(row);
-                });
-
-                // if search applied but no rows shown, show helpful message
-                if (searchTerm) {
-                  const visible = list.querySelectorAll(".player-card");
-                  if (!visible.length) {
-                    const no = document.createElement("div");
-                    no.style.opacity = 0.7;
-                    no.style.padding = "8px";
-                    no.textContent = "No players found matching your search.";
-                    list.appendChild(no);
-                  }
-                }
-              };
-
-              getAllReq.onerror = (e) => {
-                console.warn("Failed to load global players", e);
-                const errDiv = document.createElement("div");
-                errDiv.style.padding = "8px";
-                errDiv.style.color = "red";
-                errDiv.textContent =
-                  "Failed to load global players (see console).";
-                list.appendChild(errDiv);
-              };
-            } catch (e) {
-              console.error("renderGlobalPlayers error", e);
-              const errDiv = document.createElement("div");
-              errDiv.style.padding = "8px";
-              errDiv.style.color = "red";
-              errDiv.textContent = "Error rendering players (see console).";
-              list.appendChild(errDiv);
+            if (!filtered.length) {
+              const empty = document.createElement("div");
+              empty.style.opacity = 0.7;
+              empty.style.padding = "8px";
+              empty.textContent = "No players found.";
+              list.appendChild(empty);
+              return;
             }
+
+            // Render each player (reuse styles / behavior from original render)
+            filtered.forEach((p) => {
+              const row = document.createElement("div");
+              row.className = "player-card";
+
+              const left = document.createElement("div");
+              left.style.display = "flex";
+              left.style.alignItems = "center";
+              left.style.gap = "8px";
+
+              const img = document.createElement("img");
+              const gender = (p.gender || "").toLowerCase();
+              img.src =
+                p.photo && p.photo.trim()
+                  ? p.photo
+                  : gender === "female" || gender === "girl"
+                  ? "default_girl.png"
+                  : "default_boy.png";
+              img.onerror = () => {
+                img.onerror = null;
+                img.src =
+                  gender === "female" || gender === "girl"
+                    ? "default_girl.png"
+                    : "default_boy.png";
+              };
+              img.style.width = "38px";
+              img.style.height = "38px";
+              img.style.borderRadius = "50%";
+              left.appendChild(img);
+
+              const info = document.createElement("div");
+              info.className = "player-info";
+              const nm = document.createElement("div");
+              nm.className = "player-name";
+              nm.textContent = p.name || "(no name)";
+              const meta = document.createElement("div");
+              meta.className = "player-meta";
+              // reuse getStatsFor if you have it; else show placeholder
+              const s =
+                typeof getStatsFor === "function"
+                  ? getStatsFor(p.name)
+                  : { P: 0, W: 0, L: 0 };
+              meta.textContent = `P:${s.P} • W:${s.W} • L:${s.L}`;
+              info.appendChild(nm);
+              info.appendChild(meta);
+              left.appendChild(info);
+
+              // actions container
+              const actions = document.createElement("div");
+              actions.style.marginLeft = "auto";
+              actions.style.display = "flex";
+              actions.style.gap = "6px";
+
+              const addBtn = document.createElement("button");
+              addBtn.textContent = "Add";
+              addBtn.onclick = async (ev) => {
+                ev.stopPropagation();
+                // Add to current tournament state (in-memory)
+                const st = getState();
+                st.players.push({
+                  name: p.name,
+                  id: p.id || crypto.randomUUID(),
+                  photo: p.photo,
+                  gender: p.gender,
+                });
+                saveDB();
+                renderAll();
+              };
+
+              const editBtn = document.createElement("button");
+              editBtn.textContent = "Edit";
+              editBtn.onclick = (ev) => {
+                ev.stopPropagation();
+                openPlayerPopup(p, null);
+              };
+
+              const delBtn = document.createElement("button");
+              delBtn.textContent = "Delete";
+              delBtn.onclick = async (ev) => {
+                ev.stopPropagation();
+                if (!confirm(`Delete ${p.name || "this player"} from server?`))
+                  return;
+                try {
+                  // call server delete if your backend supports it (optional)
+                  await fetch(`${API_BASE}/players/${p.id}`, {
+                    method: "DELETE",
+                  });
+                  // refresh UI
+                  renderGlobalPlayers();
+                } catch (err) {
+                  alert("Delete failed, see console.");
+                  console.error(err);
+                }
+              };
+
+              actions.appendChild(addBtn);
+              actions.appendChild(editBtn);
+              actions.appendChild(delBtn);
+
+              row.appendChild(left);
+              row.appendChild(actions);
+
+              row.onclick = () => openPlayerPopup(p, null);
+
+              list.appendChild(row);
+            });
           }
 
           const refreshBtn = document.getElementById("refreshGlobalPlayers");
@@ -3408,6 +3477,50 @@
                 };
                 r.readAsDataURL(f);
               };
+            }
+
+            // ----------------- loadMatchesByDate helper -----------------
+            // Place this before the calendarDateInput change listener
+            async function loadMatchesByDate(date) {
+              if (!date) return []; // nothing to do
+              try {
+                const res = await fetch(
+                  `${API_BASE}/matches?date=${encodeURIComponent(date)}`
+                );
+                if (!res.ok) {
+                  console.warn(
+                    "loadMatchesByDate: server returned",
+                    res.status
+                  );
+                  return [];
+                }
+                const rows = await res.json();
+                // convert server rows to local match shape expected by your app
+                return rows.map((r) => ({
+                  a: r.player1,
+                  b: r.player2,
+                  sa:
+                    r.score1 === null || r.score1 === undefined
+                      ? ""
+                      : Number(r.score1),
+                  sb:
+                    r.score2 === null || r.score2 === undefined
+                      ? ""
+                      : Number(r.score2),
+                  saved: r.score1 !== null && r.score2 !== null,
+                  date: r.date
+                    ? typeof r.date === "string"
+                      ? r.date.slice(0, 10)
+                      : r.date.toISOString
+                      ? r.date.toISOString().slice(0, 10)
+                      : r.date
+                    : date,
+                  round: r.round_no || 0,
+                }));
+              } catch (err) {
+                console.error("loadMatchesByDate error:", err);
+                return [];
+              }
             }
 
             // Export CSV (flatten all tournaments into rows)
