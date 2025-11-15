@@ -1193,6 +1193,72 @@
             });
           }
 
+          // Function to save all tournament players to global PlayerDB
+          async function saveTournamentPlayersToGlobalDB() {
+            try {
+              const st = getState();
+              if (!st.players || st.players.length === 0) {
+                console.log("No players to save to global DB");
+                return 0;
+              }
+
+              const dbg = await openGlobalDB();
+              const tx = dbg.transaction(GLOBALSTORE, "readwrite");
+              const store = tx.objectStore(GLOBALSTORE);
+
+              let savedCount = 0;
+              const errors = [];
+
+              for (const p of st.players) {
+                // Create proper player object for global DB
+                const playerObj = {
+                  id:
+                    p.id ||
+                    (crypto.randomUUID
+                      ? crypto.randomUUID()
+                      : `${Date.now()}-${Math.floor(Math.random() * 10000)}`),
+                  sno: p.sno || 0,
+                  name: p.name,
+                  phone: p.phone || "",
+                  adhaar: p.adhaar || p.aadhar || "",
+                  duedate: p.duedate || null,
+                  gender:
+                    p.gender || (genderSelect ? genderSelect.value : "Boys"),
+                  photo: p.photo || "",
+                };
+
+                try {
+                  // Put in IndexedDB
+                  store.put(playerObj);
+                  savedCount++;
+
+                  // Also save to server (non-blocking)
+                  savePlayerToServer(playerObj).catch((err) => {
+                    console.warn("Server save failed for", playerObj.name, err);
+                    errors.push(`${playerObj.name}: ${err.message}`);
+                  });
+                } catch (err) {
+                  console.error("Failed to save player", p.name, err);
+                  errors.push(`${p.name}: ${err.message}`);
+                }
+              }
+
+              await new Promise((res, rej) => {
+                tx.oncomplete = res;
+                tx.onerror = rej;
+              });
+
+              console.log(`✅ Saved ${savedCount} players to global PlayerDB`);
+              if (errors.length > 0) {
+                console.warn("Some players failed to save to server:", errors);
+              }
+              return savedCount;
+            } catch (err) {
+              console.error("❌ saveTournamentPlayersToGlobalDB failed:", err);
+              throw err;
+            }
+          }
+
           async function saveCustomCategoriesToDB(customCategories) {
             const db = await openGlobalDB();
             return new Promise((resolve, reject) => {
@@ -1523,6 +1589,101 @@
           on(q("nextCategoryBtn"), "click", () => {
             const i = getCategoryIndex();
             if (i < categories.length - 1) setCategoryByIndex(i + 1);
+          });
+
+          on(q("saveAllBtn"), "click", async () => {
+            let name = prompt(
+              "Enter a name for this archive of all tournaments",
+              "alltournaments"
+            );
+            if (!name) return;
+            const folderKey = name;
+
+            // FIRST: Save current tournament players to global PlayerDB
+            let savedCount = 0;
+            try {
+              savedCount = await saveTournamentPlayersToGlobalDB();
+              console.log(`✅ Saved ${savedCount} players to global database`);
+            } catch (err) {
+              console.error("❌ Failed to save players to global DB:", err);
+              alert(
+                "Warning: Failed to save some players to database. Check console."
+              );
+            }
+
+            // Copy everything from TOURNAMENTS
+            const archive = {};
+            for (const [k, st] of Object.entries(TOURNAMENTS)) {
+              archive[k] = {
+                players: st.players,
+                matches: st.matches,
+                teams: st.teams || [],
+                stats: Object.fromEntries(st.stats || []),
+                meta: st.meta || {},
+                matchType: st.matchType || "Singles",
+              };
+            }
+
+            localStorage.setItem(
+              `folder:${folderKey}`,
+              JSON.stringify({ all: archive })
+            );
+            renderFolders();
+
+            // Refresh the Players tab to show newly saved players
+            if (typeof renderGlobalPlayers === "function") {
+              try {
+                await renderGlobalPlayers();
+              } catch (e) {
+                console.warn("renderGlobalPlayers error:", e);
+              }
+            }
+
+            alert(
+              `✅ Tournament saved!\n${savedCount} new player(s) added to global database.`
+            );
+          });
+
+          on(q("saveFolderBtn"), "click", async () => {
+            // Save current tournament players to global DB first
+            try {
+              const savedCount = await saveTournamentPlayersToGlobalDB();
+              console.log(`✅ Saved ${savedCount} players to global DB`);
+            } catch (err) {
+              console.warn("Failed to save players to global DB:", err);
+            }
+
+            const st = getState();
+            let name = prompt("Enter a name for this tournament", getKey());
+            if (!name) return;
+            const folderKey = `${new Date()
+              .toISOString()
+              .slice(0, 10)}:${name}`;
+
+            // Build a small archive containing only the currently-active category
+            const archive = {
+              [getKey()]: {
+                players: st.players,
+                matches: st.matches,
+                teams: st.teams || [],
+                stats: Object.fromEntries(st.stats || []),
+                meta: st.meta || {},
+                matchType: st.matchType || "Singles",
+              },
+            };
+
+            localStorage.setItem(
+              `folder:${folderKey}`,
+              JSON.stringify({ all: archive })
+            );
+            renderFolders();
+
+            // Refresh Players tab
+            if (typeof renderGlobalPlayers === "function") {
+              try {
+                await renderGlobalPlayers();
+              } catch (e) {}
+            }
           });
 
           on(togglePlayersBtn, "click", () => {

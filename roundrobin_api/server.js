@@ -5,7 +5,7 @@ const { Pool } = require("pg");
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "50mb" })); // Increased limit for photo data
 
 // DB Connection
 const pool = new Pool({
@@ -16,46 +16,123 @@ const pool = new Pool({
   port: process.env.DB_PORT,
 });
 
-// -----------------------------------------
-// PLAYERS API
-// -----------------------------------------
+// Test connection
+pool.connect((err, client, release) => {
+  if (err) {
+    console.error("❌ Database connection error:", err.stack);
+  } else {
+    console.log("✅ Database connected successfully");
+    release();
+  }
+});
 
-// GET PLAYERS
+// ========================================
+// PLAYERS API
+// ========================================
+
+// GET ALL PLAYERS
 app.get("/players", async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM players ORDER BY id");
     res.json(result.rows);
   } catch (e) {
+    console.error("GET /players error:", e);
     res.status(500).json({ error: e.toString() });
   }
 });
 
-// ADD PLAYER
+// ADD OR UPDATE PLAYER (with proper ID handling)
 app.post("/players", async (req, res) => {
   try {
-    const { name, phone, adhaar, due_date } = req.body;
+    const { id, sno, name, phone, adhaar, duedate, gender, photo } = req.body;
+
+    // Validation
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: "Player name is required" });
+    }
+
+    // Check if player with this ID already exists
+    if (id) {
+      const existing = await pool.query(
+        "SELECT id FROM players WHERE id = $1",
+        [id]
+      );
+
+      if (existing.rows.length > 0) {
+        // UPDATE existing player
+        const result = await pool.query(
+          `UPDATE players 
+           SET name = $1, phone = $2, adhaar = $3, duedate = $4, gender = $5, photo = $6, sno = $7
+           WHERE id = $8
+           RETURNING *`,
+          [
+            name,
+            phone || "",
+            adhaar || "",
+            duedate || null,
+            gender || "Boys",
+            photo || "",
+            sno || 0,
+            id,
+          ]
+        );
+        return res.json(result.rows[0]);
+      }
+    }
+
+    // INSERT new player (with ID if provided, or let DB generate)
     const result = await pool.query(
-      `INSERT INTO players (name, phone, adhaar, due_date)
-       VALUES ($1,$2,$3,$4) RETURNING *`,
-      [name, phone, adhaar, due_date]
+      `INSERT INTO players (id, sno, name, phone, adhaar, duedate, gender, photo) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+       ON CONFLICT (id) DO UPDATE 
+       SET name = EXCLUDED.name, 
+           phone = EXCLUDED.phone, 
+           adhaar = EXCLUDED.adhaar, 
+           duedate = EXCLUDED.duedate,
+           gender = EXCLUDED.gender,
+           photo = EXCLUDED.photo,
+           sno = EXCLUDED.sno
+       RETURNING *`,
+      [
+        id || null, // Let DB generate if null
+        sno || 0,
+        name,
+        phone || "",
+        adhaar || "",
+        duedate || null,
+        gender || "Boys",
+        photo || "",
+      ]
     );
+
     res.json(result.rows[0]);
   } catch (e) {
+    console.error("POST /players error:", e);
     res.status(500).json({ error: e.toString() });
   }
 });
 
-// -----------------------------------------
+// DELETE PLAYER
+app.delete("/players/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query("DELETE FROM players WHERE id = $1", [id]);
+    res.json({ success: true, message: "Player deleted" });
+  } catch (e) {
+    console.error("DELETE /players error:", e);
+    res.status(500).json({ error: e.toString() });
+  }
+});
+
+// ========================================
 // MATCHES API
-// -----------------------------------------
+// ========================================
 
 // SAVE ONE MATCH RESULT
-// Robust POST /matches handler — replace your existing one with this
 app.post("/matches", async (req, res) => {
   try {
-    // sanitize + defaulting
-    const body = req.body || {};
-    const date = body.date || null; // expected "YYYY-MM-DD" or null
+    const body = req.body;
+    const date = body.date || null;
     const category = body.category ? String(body.category) : "";
     const gender = body.gender ? String(body.gender) : "";
     const player1 = body.player1 ? String(body.player1) : "";
@@ -67,6 +144,7 @@ app.post("/matches", async (req, res) => {
       : score1 > score2
       ? player1
       : player2;
+    const roundno = body.roundno || body.round || 0;
 
     // Basic validation
     if (!player1 || !player2) {
@@ -74,25 +152,11 @@ app.post("/matches", async (req, res) => {
         .status(400)
         .json({ error: "player1 and player2 are required" });
     }
-    if (player1 === player2) {
-      return res
-        .status(400)
-        .json({ error: "player1 and player2 must be different" });
-    }
-    if (
-      score1 == null ||
-      score2 == null ||
-      Number.isNaN(score1) ||
-      Number.isNaN(score2)
-    ) {
-      // allow saving match with null scores, but if provided must be numbers
-      // If you want to require scores, uncomment the next line:
-      // return res.status(400).json({ error: "score1 and score2 must be numbers" });
-    }
 
-    // Insert into DB (columns must match your schema)
-    const q = `INSERT INTO matches (date, category, gender, player1, player2, score1, score2, winner)
-               VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`;
+    // Insert into DB
+    const q = `INSERT INTO matches (date, category, gender, player1, player2, score1, score2, winner, roundno) 
+               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) 
+               RETURNING *`;
     const vals = [
       date,
       category,
@@ -102,16 +166,16 @@ app.post("/matches", async (req, res) => {
       score1,
       score2,
       winner,
+      roundno,
     ];
-
     const result = await pool.query(q, vals);
+
     return res.json(result.rows[0]);
   } catch (err) {
-    // log full error to terminal for debugging, and return readable message
     console.error("POST /matches ERROR:", err);
     return res
       .status(500)
-      .json({ error: String(err && err.message ? err.message : err) });
+      .json({ error: String(err.message ? err.message : err) });
   }
 });
 
@@ -120,32 +184,31 @@ app.get("/matches", async (req, res) => {
   try {
     const { date } = req.query;
     const result = await pool.query(
-      `SELECT * FROM matches WHERE date = $1 ORDER BY id`,
+      "SELECT * FROM matches WHERE date = $1 ORDER BY id",
       [date]
     );
     res.json(result.rows);
   } catch (e) {
+    console.error("GET /matches error:", e);
     res.status(500).json({ error: e.toString() });
   }
 });
 
-// -----------------------------------------
+// ========================================
 // TOURNAMENT SAVE/LOAD
-// -----------------------------------------
+// ========================================
 
-// SAVE FULL TOURNAMENT (JSON)
+// SAVE FULL TOURNAMENT JSON
 app.post("/tournaments", async (req, res) => {
   try {
     const { date, key, data } = req.body;
-
     const result = await pool.query(
-      `INSERT INTO tournaments (date, key, data)
-       VALUES ($1,$2,$3) RETURNING *`,
+      "INSERT INTO tournaments (date, key, data) VALUES ($1,$2,$3) RETURNING *",
       [date, key, data]
     );
-
     res.json(result.rows[0]);
   } catch (e) {
+    console.error("POST /tournaments error:", e);
     res.status(500).json({ error: e.toString() });
   }
 });
@@ -155,15 +218,17 @@ app.get("/tournaments", async (req, res) => {
   try {
     const { date } = req.query;
     const result = await pool.query(
-      `SELECT * FROM tournaments WHERE date = $1`,
+      "SELECT * FROM tournaments WHERE date = $1",
       [date]
     );
     res.json(result.rows);
   } catch (e) {
+    console.error("GET /tournaments error:", e);
     res.status(500).json({ error: e.toString() });
   }
 });
 
-app.listen(3000, () => {
-  console.log("Backend running at http://localhost:3000");
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`🚀 Backend running at http://localhost:${PORT}`);
 });
